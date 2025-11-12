@@ -96,31 +96,28 @@ public class ProjectTypesService {
             projectTypeDetailDto.setMetaKeywords(projectType.getMetaKeyword());
             projectTypeDetailDto.setMetaDescription(projectType.getMetaDesc());
             List<ProjectDetailDto> projectDetailDtoList = new ArrayList<>();
-            if(projectType.getProject() != null){
+            // if(projectType.getProject() != null){
                 if(url.equals("new-launches")){
-                    List<Project> projects = projectRepository.findAll(Sort.by(Sort.Direction.ASC, "projectName"));
+                    List<Project> projects = projectRepository.findByProjectStatus_StatusNameOrderByProjectNameAsc("New Launch");
                     projectDetailDtoList = projects.stream()
-                            .sorted(Comparator.comparing(Project::getProjectName, String.CASE_INSENSITIVE_ORDER))
-                            .filter(project ->
-                                    project.getProjectStatus() != null &&
-                                            "New Launch".equals(project.getProjectStatus().getStatusName()))
-                            .map(project-> {
-                        ProjectDetailDto projectDetailDto = new ProjectDetailDto();
-                        commonMapper.mapProjectToProjectDto(project, projectDetailDto);
-                        return projectDetailDto;
-                    }).toList();
-                }else{
-                    List<Project> projects = projectType.getProject();
-                    projectDetailDtoList = projects.stream()
-                            .sorted(Comparator.comparing(Project::getProjectName, String.CASE_INSENSITIVE_ORDER))
-                            .map(project-> {
-                        ProjectDetailDto projectDetailDto = new ProjectDetailDto();
-                        commonMapper.mapProjectToProjectDto(project, projectDetailDto);
-                        return projectDetailDto;
-                    }).toList();
+                        .map(project -> {
+                            ProjectDetailDto dto = new ProjectDetailDto();
+                            commonMapper.mapProjectToProjectDto(project, dto);
+                            return dto;
+                        }).toList();
                 }
+                // else{
+                //     List<Project> projects = projectType.getProject();
+                //     projectDetailDtoList = projects.stream()
+                //             .sorted(Comparator.comparing(Project::getProjectName, String.CASE_INSENSITIVE_ORDER))
+                //             .map(project-> {
+                //         ProjectDetailDto projectDetailDto = new ProjectDetailDto();
+                //         commonMapper.mapProjectToProjectDto(project, projectDetailDto);
+                //         return projectDetailDto;
+                //     }).toList();
+                // }
                 projectTypeDetailDto.setProjectList(projectDetailDtoList);
-            }
+            // }
         });
 
         return projectTypeDetailDto;

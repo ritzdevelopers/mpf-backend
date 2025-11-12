@@ -21,30 +21,30 @@ public class FloorPlanService {
 
     @Transactional
     public List<Map<String, Object>> getAllPlans() {
-        // List<Project> allProjects = projectRepository.findAll();
+        List<Project> allProjects = projectRepository.findAll();
 
         Map<Integer, Map<String, Object>> groupedByProject = new HashMap<>();
 
-        // for (Project project : allProjects) {
-            // int projectId = project.getId();
+        for (Project project : allProjects) {
+            int projectId = project.getId();
 
-            // List<Map<String, Object>> plans = project.getFloorPlans().stream().map(p-> {
-            //     Map<String, Object> planMap = new HashMap<>();
-            //     planMap.put("id", p.getId());
-            //     planMap.put("planType", p.getPlanType());
-            //     planMap.put("areaSqft", p.getAreaSqft());
-            //     planMap.put("areaSqMt", p.getAreaSqmt());
-            //     return planMap;
-            // }).toList();
+            List<Map<String, Object>> plans = project.getFloorPlans().stream().map(p-> {
+                Map<String, Object> planMap = new HashMap<>();
+                planMap.put("id", p.getId());
+                planMap.put("planType", p.getPlanType());
+                planMap.put("areaSqft", p.getAreaSqft());
+                planMap.put("areaSqMt", p.getAreaSqmt());
+                return planMap;
+            }).toList();
 
-            // Map<String, Object> projectMap = groupedByProject.computeIfAbsent(projectId, id -> {
-            //     Map<String, Object> newProjectMap = new HashMap<>();
-            //     newProjectMap.put("projectId", id);
-            //     newProjectMap.put("projectName", project.getProjectName());
-            //     newProjectMap.put("plans", plans);
-            //     return newProjectMap;
-            // });
-        // }
+            Map<String, Object> projectMap = groupedByProject.computeIfAbsent(projectId, id -> {
+                Map<String, Object> newProjectMap = new HashMap<>();
+                newProjectMap.put("projectId", id);
+                newProjectMap.put("projectName", project.getProjectName());
+                newProjectMap.put("plans", plans);
+                return newProjectMap;
+            });
+        }
 
         return new ArrayList<>(groupedByProject.values());
     }
