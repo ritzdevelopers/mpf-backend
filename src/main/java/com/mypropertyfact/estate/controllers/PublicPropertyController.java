@@ -1,6 +1,7 @@
 package com.mypropertyfact.estate.controllers;
 
 import com.mypropertyfact.estate.dtos.PropertyListingDto;
+import com.mypropertyfact.estate.dtos.PropertyShortDetailsDto;
 import com.mypropertyfact.estate.entities.Enquery;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.EnquiryService;
@@ -46,7 +47,7 @@ public class PublicPropertyController {
             @RequestParam(required = false) String subType) {
         
         try {
-            List<PropertyListingDto> listings = propertyListingService.getApprovedPropertyListings(
+            List<PropertyShortDetailsDto> listings = propertyListingService.getApprovedPropertyListings(
                 city, listingType, transaction, bedrooms, status, minPrice, maxPrice, subType);
             
             Map<String, Object> response = new HashMap<>();

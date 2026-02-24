@@ -1,9 +1,11 @@
 package com.mypropertyfact.estate.repositories;
 
+import com.mypropertyfact.estate.dtos.LocationBenefitDto;
 import com.mypropertyfact.estate.entities.LocationBenefit;
 import com.mypropertyfact.estate.entities.Project;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,4 +18,14 @@ public interface LocationBenefitRepository extends JpaRepository<LocationBenefit
     List<Object[]> getAllWithProjectName();
 
     List<LocationBenefit> findByProject(Project project);
+
+    @Query("""
+            SELECT new com.mypropertyfact.estate.dtos.LocationBenefitDto(
+            lb.benefitName,
+            lb.distance
+            )
+            FROM LocationBenefit lb
+            WHERE lb.project.id= :projectId
+            """)
+    List<LocationBenefitDto> findByProjectId(@Param("projectId") int projectId);
 }

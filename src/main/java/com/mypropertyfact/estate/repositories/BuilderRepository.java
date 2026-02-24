@@ -4,6 +4,7 @@ import com.mypropertyfact.estate.entities.Builder;
 import com.mypropertyfact.estate.projections.BuilderView;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +14,8 @@ public interface BuilderRepository extends JpaRepository<Builder, Integer> {
     
     Optional<Builder> findByBuilderNameIgnoreCase(String builderName);
 
+    @Query("SELECT b FROM Builder b WHERE b.slugUrl = :url")
     Optional<Builder> findBySlugUrl(String url);
+
     List<BuilderView> findAllProjectedBy(Sort sort);
 }

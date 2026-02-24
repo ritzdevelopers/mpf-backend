@@ -14,4 +14,10 @@ public class FloorPlanDto {
     private Double areaSqFt;
     private Double areaSqMt;
     private int floorId;
+
+    public FloorPlanDto(String planType, Double areaSqFt, Double areaSqMt) {
+        this.planType = planType;
+        this.areaSqFt = areaSqFt;
+        this.areaSqMt = areaSqMt;
+    }
 }

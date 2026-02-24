@@ -44,8 +44,8 @@ public class ProjectController {
     }
 
     @GetMapping("/get/{url}")
-    public ResponseEntity<ProjectDetailDto> getBySlug(@PathVariable("url") String url) {
-        return new ResponseEntity<>(this.projectService.getBySlugUrl(url), HttpStatus.OK);
+    public ResponseEntity<?> getBySlug(@PathVariable("url") String url) {
+        return new ResponseEntity<>(this.projectService.getProjectDetailsBySlug(url), HttpStatus.OK);
     }
 
     @DeleteMapping("/delete/{id}")
@@ -78,5 +78,10 @@ public class ProjectController {
             @RequestParam("size") Integer size
     ) {
         return ResponseEntity.ok(projectService.getProjectInParts(page, size));
+    }
+
+    @GetMapping("/get-by-slug/{slug}")
+    public ResponseEntity<?> getProjectDetailsBySlug(@PathVariable("slug") String slug) {
+        return new ResponseEntity<>(projectService.getProjectDetailsBySlug(slug), HttpStatus.OK);
     }
 }

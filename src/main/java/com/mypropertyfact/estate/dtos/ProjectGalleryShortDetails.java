@@ -7,9 +7,8 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ProjectFaqDto {
+public class ProjectGalleryShortDetails {
     private int id;
-    private int projectId;
-    private String question;
-    private String answer;
+    private String imageName;
+    private String altTag;
 }

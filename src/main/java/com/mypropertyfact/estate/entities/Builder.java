@@ -28,7 +28,7 @@ public class Builder {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "builder", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "builder", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Project> projects;
 }

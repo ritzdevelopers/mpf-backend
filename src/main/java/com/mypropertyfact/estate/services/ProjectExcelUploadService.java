@@ -558,7 +558,7 @@ public class ProjectExcelUploadService {
             project.setAmenities(amenities);
         }
         for (String part : projectAmenities.split("_")) {
-            String name = part.trim();
+            String name = part.trim().replace("-", " ");
             if (name.isEmpty())
                 continue;
             Optional<Amenity> opt = amenityRepository.findByTitleIgnoreCase(name);

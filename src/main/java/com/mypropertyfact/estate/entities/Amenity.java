@@ -8,7 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Set;
 
 @Data
 @Entity
@@ -28,5 +28,5 @@ public class Amenity {
 
     @ManyToMany(mappedBy = "amenities")
     @JsonIgnore
-    private List<Project> projects;
+    private Set<Project> projects;
 }

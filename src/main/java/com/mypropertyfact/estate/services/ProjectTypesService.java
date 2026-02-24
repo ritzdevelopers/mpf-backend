@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -85,41 +86,21 @@ public class ProjectTypesService {
     public ProjectTypeDto getBySlug(String url) {
         ProjectTypeDto projectTypeDetailDto = new ProjectTypeDto();
         Optional<ProjectTypes> projectTypeData = this.projectTypeRepository.findBySlugUrl(url);
-        projectTypeData.ifPresent(projectType -> {
+        List<ProjectShortDetails> projectDetailDtoList = projectRepository.findAllProjects();
+            projectTypeData.ifPresent(projectType -> {
             projectTypeDetailDto.setId(projectType.getId());
             projectTypeDetailDto.setProjectTypeName(projectType.getProjectTypeName());
             projectTypeDetailDto.setProjectTypeDescription(projectType.getProjectTypeDesc());
             projectTypeDetailDto.setMetaTitle(projectType.getMetaTitle());
             projectTypeDetailDto.setMetaKeywords(projectType.getMetaKeyword());
             projectTypeDetailDto.setMetaDescription(projectType.getMetaDesc());
-            List<ProjectShortDetails> projectDetailDtoList;
-
-            if (projectType.getProject() != null) {
-                if (url.equals("new-launches")) {
-                    List<Project> projects = projectRepository.findAll(Sort.by(Sort.Direction.ASC, "projectName"));
-                    projectDetailDtoList = projects.stream()
-                            .sorted(Comparator.comparing(Project::getProjectName, String.CASE_INSENSITIVE_ORDER))
-                            .filter(project ->
-                                    project.getProjectStatus() != null &&
-                                            "New Launched".equals(project.getProjectStatus().getStatusName()))
-                            .map(project -> {
-                                ProjectShortDetails projectDetailDto = new ProjectShortDetails();
-                                commonMapper.mapShortProjectDetails(project, projectDetailDto);
-                                return projectDetailDto;
-                            }).toList();
-                } else {
-                    List<Project> projects = projectType.getProject();
-                    projectDetailDtoList = projects.stream()
-                            .sorted(Comparator.comparing(Project::getProjectName, String.CASE_INSENSITIVE_ORDER))
-                            .map(project -> {
-                                ProjectShortDetails projectDetailDto = new ProjectShortDetails();
-                                commonMapper.mapShortProjectDetails(project, projectDetailDto);
-                                return projectDetailDto;
-                            }).toList();
-                }
-                projectTypeDetailDto.setProjectList(projectDetailDtoList);
-            }
         });
+        if(url.equals("new-launches")) {
+            projectDetailDtoList = projectDetailDtoList.stream().filter(project -> project.getProjectStatusName().trim().toLowerCase().equals("new launched".toLowerCase().trim())).collect(Collectors.toList());
+        } else {
+            projectDetailDtoList = projectDetailDtoList.stream().filter(project -> project.getPropertyTypeName().trim().toLowerCase().equals(url.toLowerCase().trim())).collect(Collectors.toList());
+        }
+        projectTypeDetailDto.setProjectList(projectDetailDtoList);
         return projectTypeDetailDto;
     }
 

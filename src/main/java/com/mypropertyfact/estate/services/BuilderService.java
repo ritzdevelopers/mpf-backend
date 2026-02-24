@@ -4,26 +4,31 @@ import com.mypropertyfact.estate.common.CommonMapper;
 import com.mypropertyfact.estate.dtos.BuilderResponse;
 import com.mypropertyfact.estate.dtos.BuilderDto;
 import com.mypropertyfact.estate.dtos.ProjectDetailDto;
+import com.mypropertyfact.estate.dtos.ProjectShortDetails;
 import com.mypropertyfact.estate.entities.Builder;
 import com.mypropertyfact.estate.entities.Project;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.repositories.BuilderRepository;
+import com.mypropertyfact.estate.repositories.ProjectRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class BuilderService {
 
     private final BuilderRepository builderRepository;
-
+    private final ProjectRepository projectRepository;
 
     private final CommonMapper commonMapper;
-    //Getting all builders
+
+    // Getting all builders
     public BuilderResponse getAllBuilders() {
         return new BuilderResponse(builderRepository.findAllProjectedBy(Sort.by(Sort.Direction.ASC, "builderName")),
                 new Response(1, "All builders fetched successfully...", 0));
@@ -93,27 +98,22 @@ public class BuilderService {
     }
 
     @Transactional
-    public BuilderDto getBySlug(String url){
+    public BuilderDto getBySlug(String url) {
         Optional<Builder> dbBuilder = this.builderRepository.findBySlugUrl(url);
+        List<ProjectShortDetails> projectDetailDtoList = projectRepository.findAllProjects().stream()
+                .filter(project -> project.getBuilderName()
+                        .trim().toLowerCase()
+                        .equals(url.toLowerCase().trim()))
+                .collect(Collectors.toList());
         BuilderDto builderDto = new BuilderDto();
-        dbBuilder.ifPresent(builder-> {
+        dbBuilder.ifPresent(builder -> {
             builderDto.setId(builder.getId());
-            builderDto.setBuilderName( builder.getBuilderName()); ;
+            builderDto.setBuilderName(builder.getBuilderName());
+            ;
             builderDto.setBuilderDescription(builder.getBuilderDesc());
             builderDto.setMetaTitle(builder.getMetaTitle());
             builderDto.setMetaKeywords(builder.getMetaKeyword());
             builderDto.setMetaDescription(builder.getMetaDesc());
-            List<ProjectDetailDto> projectDetailDtoList = new ArrayList<>();
-            if(builder.getProjects() != null) {
-                List<Project> projects = builder.getProjects();
-                projectDetailDtoList = projects.stream()
-                        .sorted(Comparator.comparing(Project::getProjectName, String.CASE_INSENSITIVE_ORDER))
-                        .map(project -> {
-                    ProjectDetailDto projectDetailDto = new ProjectDetailDto();
-                    commonMapper.mapProjectToProjectDto(project, projectDetailDto);
-                    return projectDetailDto;
-                }).toList();
-            }
             builderDto.setProjectList(projectDetailDtoList);
         });
         return builderDto;

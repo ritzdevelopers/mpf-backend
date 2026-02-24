@@ -31,7 +31,7 @@ public class ProjectTypes {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "projectTypes", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "projectTypes", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Project> project;
 
