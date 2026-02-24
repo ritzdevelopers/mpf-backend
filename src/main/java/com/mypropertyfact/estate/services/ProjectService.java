@@ -3,9 +3,7 @@ package com.mypropertyfact.estate.services;
 import com.mypropertyfact.estate.Constants;
 import com.mypropertyfact.estate.common.CommonMapper;
 import com.mypropertyfact.estate.common.FileUtils;
-import com.mypropertyfact.estate.dtos.AddUpdateProjectDto;
-import com.mypropertyfact.estate.dtos.ProjectDetailDto;
-import com.mypropertyfact.estate.dtos.ProjectShortDetails;
+import com.mypropertyfact.estate.dtos.*;
 import com.mypropertyfact.estate.entities.*;
 import com.mypropertyfact.estate.models.ProjectAmenityDto;
 import com.mypropertyfact.estate.models.Response;
@@ -36,6 +34,12 @@ public class ProjectService {
     private final FileUtils fileUtils;
     private final ProjectStatusRepository projectStatusRepository;
     private final CommonMapper commonMapper;
+    private final ProjectDesktopBannerRepository desktopBannerRepository;
+    private final ProjectMobileBannerRepository mobileBannerRepository;
+    private final FloorPlanRepository floorPlanRepository;
+    private final ProjectGalleryRepository projectGalleryRepository;
+    private final LocationBenefitRepository locationBenefitRepository;
+    private final ProjectFaqsRepository faqsRepository;
 
     @Value("${upload_dir}")
     private String uploadDir; // D:/my-property-fact/public/
@@ -402,4 +406,22 @@ public class ProjectService {
         return projectRepository.findAllProjects();
     }
 
+    public ProjectFullDetails getProjectDetailsBySlug(String slug) {
+        ProjectFullDetails projectFullDetails = projectRepository.findProjectFullDetails(slug).orElseThrow(() -> new IllegalArgumentException("Project not found with slug: "+ slug));
+        List<Amenity> amenities = amenityRepository.findByProjectsId(projectFullDetails.getId());
+        List<AmenityDto> amenityDtoList = amenities.stream().map(amenity-> AmenityDto.builder()
+                .id(amenity.getId())
+                .title(amenity.getTitle())
+                .altTag(amenity.getAltTag())
+                .image(amenity.getAmenityImageUrl())
+                .build()).toList();
+        projectFullDetails.setAmenities(amenityDtoList);
+        projectFullDetails.setDesktopImages(desktopBannerRepository.findByProjectId(projectFullDetails.getId()));
+        projectFullDetails.setMobileImages(mobileBannerRepository.findByProjectId(projectFullDetails.getId()));
+        projectFullDetails.setFloorPlans(floorPlanRepository.findByProjectId(projectFullDetails.getId()));
+        projectFullDetails.setGalleryImages(projectGalleryRepository.findByProjectId(projectFullDetails.getId()));
+        projectFullDetails.setLocationBenefits(locationBenefitRepository.findByProjectId(projectFullDetails.getId()));
+        projectFullDetails.setFaqs(faqsRepository.findByProjectId(projectFullDetails.getId()));
+        return projectFullDetails;
+    }
 }

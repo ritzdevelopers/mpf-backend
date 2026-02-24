@@ -1,5 +1,6 @@
 package com.mypropertyfact.estate.repositories;
 
+import com.mypropertyfact.estate.dtos.ProjectFullDetails;
 import com.mypropertyfact.estate.dtos.ProjectShortDetails;
 import com.mypropertyfact.estate.entities.Project;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -72,5 +73,53 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             ORDER BY p.projectName
             """)
     List<ProjectShortDetails> findAllProjects();
+
+    @Query("""
+            SELECT new com.mypropertyfact.estate.dtos.ProjectFullDetails(
+                p.id,
+                p.metaTitle,
+                p.metaKeyword,
+                p.metaDescription,
+                p.projectName,
+                p.projectLocality,
+                p.projectConfiguration,
+                p.projectPrice,
+                p.ivrNo,
+                p.locationMap,
+                p.reraNo,
+                p.reraQr,
+                p.reraWebsite,
+                p.projectLogo,
+                p.slugURL,
+                p.showFeaturedProperties,
+                p.projectLogoAltTag,
+                p.locationMapAltTag,
+                p.status,
+                p.amenityDesc,
+                p.floorPlanDesc,
+                p.locationDesc,
+                new com.mypropertyfact.estate.dtos.BuilderDto(
+                    b.id,
+                    b.builderName,
+                    b.builderDesc,
+                    b.slugUrl
+                ),
+                p.createdAt,
+                p.updatedAt,
+                w.walkthroughDesc,
+                c.state.stateName,
+                c.name,
+                c.state.country.countryName,
+                pt.projectTypeName
+            )
+            FROM Project p
+            LEFT JOIN p.builder b
+            LEFT JOIN p.projectWalkthrough w
+            LEFT JOIN p.city c
+            LEFT JOIN p.projectTypes pt
+            WHERE p.slugURL = :slug
+            AND p.status = true
+        """)
+    Optional<ProjectFullDetails> findProjectFullDetails(@Param("slug") String slug);
 
 }

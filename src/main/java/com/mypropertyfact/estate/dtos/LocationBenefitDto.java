@@ -23,4 +23,8 @@ public class LocationBenefitDto {
         this.image = image;
         this.projectName = pName;
     }
+    public LocationBenefitDto(String benefitName, String distance) {
+        this.benefitName = benefitName;
+        this.distance = distance;
+    }
 }
