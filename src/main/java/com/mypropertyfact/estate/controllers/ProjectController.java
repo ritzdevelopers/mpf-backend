@@ -1,7 +1,6 @@
 package com.mypropertyfact.estate.controllers;
 
 import com.mypropertyfact.estate.dtos.AddUpdateProjectDto;
-import com.mypropertyfact.estate.dtos.ProjectDetailDto;
 import com.mypropertyfact.estate.dtos.ProjectShortDetails;
 import com.mypropertyfact.estate.models.ProjectAmenityDto;
 import com.mypropertyfact.estate.models.Response;

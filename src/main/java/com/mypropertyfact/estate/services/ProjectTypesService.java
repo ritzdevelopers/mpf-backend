@@ -1,9 +1,7 @@
 package com.mypropertyfact.estate.services;
 
-import com.mypropertyfact.estate.common.CommonMapper;
 import com.mypropertyfact.estate.dtos.ProjectShortDetails;
 import com.mypropertyfact.estate.dtos.ProjectTypeDto;
-import com.mypropertyfact.estate.entities.Project;
 import com.mypropertyfact.estate.entities.ProjectTypes;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.projections.ProjectTypeView;
@@ -24,8 +22,6 @@ public class ProjectTypesService {
     private final ProjectTypeRepository projectTypeRepository;
     
     private final ProjectRepository projectRepository;
-    
-    private final CommonMapper commonMapper;
 
     public List<ProjectTypeView> getAllProjectTypes() {
         return this.projectTypeRepository.findAllProjectedBy(Sort.by(Sort.Direction.ASC, "projectTypeName"));

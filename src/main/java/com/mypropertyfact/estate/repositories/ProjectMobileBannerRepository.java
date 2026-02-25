@@ -1,6 +1,5 @@
 package com.mypropertyfact.estate.repositories;
 
-import com.mypropertyfact.estate.dtos.ProjectDesktopBannerDto;
 import com.mypropertyfact.estate.dtos.ProjectMobileBannerDto;
 import com.mypropertyfact.estate.entities.Project;
 import com.mypropertyfact.estate.entities.ProjectMobileBanner;
