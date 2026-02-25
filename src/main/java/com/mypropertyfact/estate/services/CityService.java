@@ -82,6 +82,7 @@ public class CityService {
     public CityDetailDto getBySlug(String url) {
         CityDetailDto dbCity = this.cityRepository.findCityDetails(url);
         List<ProjectShortDetails> allProjects = projectRepository.findAllProjects();
+        allProjects = allProjects.stream().filter(project -> project.getCityName().toLowerCase().trim().equals(url.toLowerCase().trim())).toList();
         dbCity.setProjectList(allProjects);
         return dbCity;
     }

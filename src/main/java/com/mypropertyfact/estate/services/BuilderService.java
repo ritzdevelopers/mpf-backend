@@ -1,12 +1,9 @@
 package com.mypropertyfact.estate.services;
 
-import com.mypropertyfact.estate.common.CommonMapper;
 import com.mypropertyfact.estate.dtos.BuilderResponse;
 import com.mypropertyfact.estate.dtos.BuilderDto;
-import com.mypropertyfact.estate.dtos.ProjectDetailDto;
 import com.mypropertyfact.estate.dtos.ProjectShortDetails;
 import com.mypropertyfact.estate.entities.Builder;
-import com.mypropertyfact.estate.entities.Project;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.repositories.BuilderRepository;
 import com.mypropertyfact.estate.repositories.ProjectRepository;
@@ -25,8 +22,6 @@ public class BuilderService {
 
     private final BuilderRepository builderRepository;
     private final ProjectRepository projectRepository;
-
-    private final CommonMapper commonMapper;
 
     // Getting all builders
     public BuilderResponse getAllBuilders() {
@@ -101,9 +96,8 @@ public class BuilderService {
     public BuilderDto getBySlug(String url) {
         Optional<Builder> dbBuilder = this.builderRepository.findBySlugUrl(url);
         List<ProjectShortDetails> projectDetailDtoList = projectRepository.findAllProjects().stream()
-                .filter(project -> project.getBuilderName()
-                        .trim().toLowerCase()
-                        .equals(url.toLowerCase().trim()))
+                .filter(project -> project.getBuilderSlug()
+                        .equals(url))
                 .collect(Collectors.toList());
         BuilderDto builderDto = new BuilderDto();
         dbBuilder.ifPresent(builder -> {
