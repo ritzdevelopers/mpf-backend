@@ -24,4 +24,5 @@ public class CityDetailDto {
     private String cityImage;
     private String slugURL;
     private List<ProjectShortDetails> projectList;
+    private List<LocalityShortDto> localities;
 }

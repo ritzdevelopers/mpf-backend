@@ -110,13 +110,20 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
                 c.state.stateName,
                 c.name,
                 c.state.country.countryName,
-                pt.projectTypeName
+                pt.projectTypeName,
+                c.state.country.id,
+                c.state.id,
+                c.id,
+                p.projectThumbnail,
+                pt.id,
+                ps.id
             )
             FROM Project p
             LEFT JOIN p.builder b
             LEFT JOIN p.projectWalkthrough w
             LEFT JOIN p.city c
             LEFT JOIN p.projectTypes pt
+            LEFT JOIN p.projectStatus ps
             WHERE p.slugURL = :slug
             AND p.status = true
         """)

@@ -7,6 +7,7 @@ import com.mypropertyfact.estate.dtos.*;
 import com.mypropertyfact.estate.entities.*;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.repositories.CityRepository;
+import com.mypropertyfact.estate.repositories.LocalityRepository;
 import com.mypropertyfact.estate.repositories.ProjectRepository;
 import com.mypropertyfact.estate.repositories.StateRepository;
 
@@ -28,14 +29,19 @@ public class CityService {
     private final CommonMapper commonMapper;
     private final FileUtils fileUtils;
     private final ProjectRepository projectRepository;
-
+    private final LocalityRepository localityRepository;
 //    public List<CityView> getAllCities() {
 //        return cityRepository.findAllProjectedBy(Sort.by(Sort.Direction.ASC, "name"));
 //    }
 
     @Transactional
     public List<CityDetailDto> getAllCities() {
-        return cityRepository.findAllCities();
+        List<CityDetailDto> allCities = cityRepository.findAllCities();
+        return allCities.stream().map(city -> {
+            List<LocalityShortDto> allLocalitiesOfCity = localityRepository.findAllLocalitiesOfCity(city.getId());
+            city.setLocalities(allLocalitiesOfCity);
+            return city;
+        }).toList();
     }
 
     public Response postNewCity(CityDto cityDto) {
@@ -81,6 +87,8 @@ public class CityService {
     @Transactional
     public CityDetailDto getBySlug(String url) {
         CityDetailDto dbCity = this.cityRepository.findCityDetails(url);
+        List<LocalityShortDto> allLocalitiesOfCity = localityRepository.findAllLocalitiesOfCity(dbCity.getId());
+        dbCity.setLocalities(allLocalitiesOfCity);
         List<ProjectShortDetails> allProjects = projectRepository.findAllProjects();
         allProjects = allProjects.stream().filter(project -> project.getCityName().toLowerCase().trim().equals(url.toLowerCase().trim())).toList();
         dbCity.setProjectList(allProjects);

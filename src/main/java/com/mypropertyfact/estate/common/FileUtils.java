@@ -269,7 +269,7 @@ public class FileUtils {
                 extension = "png"; // fallback to png
             }
 
-            String fileName = System.currentTimeMillis() + "_" + originalName + "." + extension;
+            String fileName = originalName + "_" +System.currentTimeMillis() + "." + extension;
             String filePath = destination + fileName;
 
             BufferedImage originalImage = ImageIO.read(file.getInputStream());
@@ -281,9 +281,7 @@ public class FileUtils {
                     .outputFormat(extension) // same as original
                     .outputQuality(quality)
                     .toFile(new File(filePath));
-
             return fileName;
-
         } catch (Exception e) {
             e.printStackTrace();
             return null;

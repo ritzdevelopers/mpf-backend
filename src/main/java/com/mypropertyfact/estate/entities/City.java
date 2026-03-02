@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "city")
+@Table(name = "cities")
 @Data
 //@ToString(exclude = {"district", "projects", "blogs", "localities"})
 @ToString(exclude = {"projects", "blogs", "localities"})
