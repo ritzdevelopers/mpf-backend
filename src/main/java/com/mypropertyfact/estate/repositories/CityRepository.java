@@ -35,6 +35,7 @@ public interface CityRepository extends JpaRepository<City, Integer> {
                 c.cityDisc,
                 c.cityImage,
                 c.slugUrl,
+                NULL,
                 NULL
             )
             FROM City c
@@ -58,6 +59,7 @@ public interface CityRepository extends JpaRepository<City, Integer> {
                 c.cityDisc,
                 c.cityImage,
                 c.slugUrl,
+                NULL,
                 NULL
             )
             FROM City c

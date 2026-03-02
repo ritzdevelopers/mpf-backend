@@ -139,7 +139,7 @@ public class WebStoryServiceImpl implements WebStoryService {
                         <!-- Logo Layer -->
                         <amp-story-grid-layer template="vertical" class="logo-layer">
                           <a href="https://mypropertyfact.in/" target="_blank">
-                            <amp-img src="https://mypropertyfact.in/logo.png" width="60" height="60" layout="fixed" alt="Logo"></amp-img>
+                            <amp-img src="https://mypropertyfact.in/logo.webp" width="60" height="60" layout="fixed" alt="Logo"></amp-img>
                           </a>
                         </amp-story-grid-layer>
                     
@@ -232,8 +232,8 @@ public class WebStoryServiceImpl implements WebStoryService {
                     </head>
                     <body>
                       <amp-story standalone title="%1$s" publisher="You"
-                        publisher-logo-src="https://mypropertyfact.in/logo.png"
-                        poster-portrait-src="https://mypropertyfact.in/logo.png">
+                        publisher-logo-src="https://mypropertyfact.in/logo.webp"
+                        poster-portrait-src="https://mypropertyfact.in/logo.webp">
                         %2$s
                       </amp-story>
                     </body>

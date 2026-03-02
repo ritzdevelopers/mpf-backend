@@ -51,6 +51,12 @@ public class ProjectFullDetails {
     private String city;
     private String country;
     private String propertyTypeName;
+    private int countryId;
+    private int stateId;
+    private int cityId;
+    private String projectThumbnailImage;
+    private int propertyTypeId;
+    private int projectStatusId;
 
     public ProjectFullDetails(
             int id,
@@ -82,7 +88,13 @@ public class ProjectFullDetails {
             String state,
             String city,
             String country,
-            String propertyTypeName
+            String propertyTypeName,
+            int countryId,
+            int stateId,
+            int cityId,
+            String projectThumbnailImage,
+            int propertyTypeId,
+            int projectStatusId
     ) {
         this.id = id;
         this.metaTitle = metaTitle;
@@ -114,5 +126,11 @@ public class ProjectFullDetails {
         this.city = city;
         this.country = country;
         this.propertyTypeName = propertyTypeName;
+        this.countryId = countryId;
+        this.stateId = stateId;
+        this.cityId = cityId;
+        this.projectThumbnailImage = projectThumbnailImage;
+        this.propertyTypeId = propertyTypeId;
+        this.projectStatusId = projectStatusId;
     }
 }

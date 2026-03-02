@@ -1,5 +1,6 @@
 package com.mypropertyfact.estate.repositories;
 
+import com.mypropertyfact.estate.dtos.LocalityShortDto;
 import com.mypropertyfact.estate.entities.Locality;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -21,4 +22,14 @@ public interface LocalityRepository extends JpaRepository<Locality, Long> {
             @Param("zoneId") Long zoneId);
 
     Optional<Locality> findBySlug(String slug);
+
+    @Query("""
+            SELECT new com.mypropertyfact.estate.dtos.LocalityShortDto(
+            l.id,
+            l.localityName
+            )
+            FROM Locality l WHERE
+            l.city.id = :cityId
+            """)
+    List<LocalityShortDto> findAllLocalitiesOfCity(@Param("cityId") int cityId);
 }

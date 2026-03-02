@@ -60,8 +60,8 @@ public class EnquiryService {
                 }
             } else {
                 enqueryRepository.save(enquery);
-                sendEmailHandler.sendEmail(enquery.getEmail(), "Thank you for giving details",
-                        "Hi, Thank you out team will get back to you");
+//                sendEmailHandler.sendEmail(enquery.getEmail(), "Thank you for giving details",
+//                        "Hi, Thank you out team will get back to you");
                 response.setIsSuccess(1);
                 response.setMessage("Data saved successfully...");
             }
