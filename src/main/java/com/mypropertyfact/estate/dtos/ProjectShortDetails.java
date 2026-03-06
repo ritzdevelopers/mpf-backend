@@ -24,4 +24,5 @@ public class ProjectShortDetails {
     private String projectLogo;
     private String projectBannerImage;
     private String builderSlug;
+    private String citySlug;
 }

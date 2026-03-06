@@ -56,7 +56,8 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
                 p.projectThumbnail,
                 p.projectLogo,
                 pdb.desktopImage,
-                b.slugUrl
+                b.slugUrl,
+                c.slugUrl
             )
             FROM Project p
             LEFT JOIN p.projectStatus ps
