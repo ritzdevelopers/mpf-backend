@@ -143,6 +143,24 @@ public class FetchImageController {
         }
     }
 
+    @GetMapping("/resume/{filename}")
+    public ResponseEntity<Resource> getResumePdf(@PathVariable String filename) {
+        try {
+            Path filePathResolved = Paths.get(filePath + "resume/", filename);
+            Resource resource = new UrlResource(filePathResolved.toUri());
+
+            if (resource.exists()) {
+                return ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .body(resource);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (MalformedURLException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping("/web-story/{filename}")
     public ResponseEntity<Resource> getWebStoryImage(@PathVariable String filename) {
         try {

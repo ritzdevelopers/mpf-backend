@@ -17,6 +17,8 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
 
     Optional<Project> findBySlugURL(String url);
 
+    Optional<Project> findFirstByProjectNameIgnoreCase(String projectName);
+
     @EntityGraph(value = "Project.withAllRelations", type = EntityGraph.EntityGraphType.LOAD)
     @Query("SELECT p FROM Project p WHERE p.slugURL = :url AND p.status = true")
     Optional<Project> findBySlugURLWithAllRelations(@Param("url") String url);

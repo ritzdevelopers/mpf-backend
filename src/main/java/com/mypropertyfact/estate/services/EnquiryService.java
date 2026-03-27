@@ -28,6 +28,7 @@ public class EnquiryService {
     private final UserRepository userRepository;
 
     private final PropertyListingRepository propertyListingRepository;
+    private final LeadService leadService;
 
     public List<Enquery> getAll() {
         return enqueryRepository.findAll();
@@ -54,6 +55,13 @@ public class EnquiryService {
                     dbEnquery.setPropertyId(enquery.getPropertyId());
                     enqueryRepository.save(dbEnquery);
                     response.setIsSuccess(1);
+                    leadService.createLead(
+                            enquery.getName(),
+                            enquery.getPhone(),
+                            enquery.getEmail(),
+                            enquery.getPageName(),
+                            "lead"
+                    );
                     response.setMessage("Data updated successfully...");
                 } else {
                     response.setMessage("No data found !!");
@@ -62,6 +70,17 @@ public class EnquiryService {
                 enqueryRepository.save(enquery);
 //                sendEmailHandler.sendEmail(enquery.getEmail(), "Thank you for giving details",
 //                        "Hi, Thank you out team will get back to you");
+                try {
+                    leadService.createLead(
+                            enquery.getName(),
+                            enquery.getPhone(),
+                            enquery.getEmail(),
+                            enquery.getPageName(),
+                            "lead"
+                    );
+                } catch (Exception ignored) {
+                    // Keep existing enquiry flow unchanged if Telegram fails.
+                }
                 response.setIsSuccess(1);
                 response.setMessage("Data saved successfully...");
             }

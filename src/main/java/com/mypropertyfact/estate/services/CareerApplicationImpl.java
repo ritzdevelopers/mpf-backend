@@ -22,9 +22,13 @@ public class CareerApplicationImpl implements CareerApplicationService {
     private final CareerApplicationRepository careerApplicationRepository;
 
     private final FileUtils fileUtils;
+    private final LeadService leadService;
 
     @Value("${upload_dir}")
     private String uploadDir;
+
+    @Value("${baseUrl}")
+    private String baseUrl;
 
     @Override
     public Response submitApplication(CareerApplicationDto careerApplicationDto) {
@@ -49,6 +53,19 @@ public class CareerApplicationImpl implements CareerApplicationService {
             careerApplication.setPhoneNumber(careerApplicationDto.getPhoneNumber());
             careerApplication.setResume(savedFileName);
             careerApplicationRepository.save(careerApplication);
+            try {
+                String resumeLink = (baseUrl.endsWith("/") ? baseUrl : baseUrl + "/") + "resume/" + savedFileName;
+                leadService.createLead(
+                        (careerApplicationDto.getFirstName() + " " + careerApplicationDto.getLastName()).trim(),
+                        careerApplicationDto.getPhoneNumber(),
+                        careerApplicationDto.getEmailId(),
+                        "Career Application",
+                        "career",
+                        resumeLink
+                );
+            } catch (Exception ignored) {
+                // Keep career submission flow unchanged if Telegram fails.
+            }
             response.setIsSuccess(1);
             response.setMessage("Your application has been submitted successfully...");
         } catch (Exception e) {

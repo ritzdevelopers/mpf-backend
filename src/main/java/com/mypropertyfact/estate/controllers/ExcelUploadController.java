@@ -3,6 +3,7 @@ package com.mypropertyfact.estate.controllers;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.ExcelUploadService;
 import com.mypropertyfact.estate.services.ProjectExcelUploadService;
+import com.mypropertyfact.estate.services.ProjectNearbyBenefitsExcelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,9 @@ public class ExcelUploadController {
 
     @Autowired
     private ProjectExcelUploadService projectExcelUploadService;
+
+    @Autowired
+    private ProjectNearbyBenefitsExcelService projectNearbyBenefitsExcelService;
 
     @PostMapping("/city-zone-locality")
     public ResponseEntity<Response> uploadCityZoneLocality(
@@ -42,5 +46,17 @@ public class ExcelUploadController {
             @RequestParam("file") MultipartFile excelFile,
             @RequestParam(value = "imagesZip", required = false) MultipartFile imagesZip) {
         return ResponseEntity.ok(projectExcelUploadService.uploadProjectsExcel(excelFile, imagesZip));
+    }
+
+    /**
+     * Bulk update nearby benefits (location benefits) for projects that do not yet have any.
+     * Excel structure: S.no, Project, School, Malls/ IT Park, Hospitals, Roads/ Highway,
+     * Famous for/ Metro, Airport/Famous places. Each benefit cell: Place-Name_Distance-Km
+     * (e.g. GD-Goenka-International-School_7-Km). Only projects with no existing location benefits are updated.
+     */
+    @PostMapping("/nearby-benefits")
+//    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<Response> uploadNearbyBenefits(@RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(projectNearbyBenefitsExcelService.uploadNearbyBenefitsExcel(file));
     }
 }
