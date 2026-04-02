@@ -61,6 +61,8 @@ public class CareerApplicationImpl implements CareerApplicationService {
                         careerApplicationDto.getEmailId(),
                         "Career Application",
                         "career",
+                        null,
+                        null,
                         resumeLink
                 );
             } catch (Exception ignored) {

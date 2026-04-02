@@ -60,7 +60,9 @@ public class EnquiryService {
                             enquery.getPhone(),
                             enquery.getEmail(),
                             enquery.getPageName(),
-                            "lead"
+                            "lead",
+                            enquery.getEnquiryFrom(),
+                            enquery.getProjectLink()
                     );
                     response.setMessage("Data updated successfully...");
                 } else {
@@ -76,7 +78,9 @@ public class EnquiryService {
                             enquery.getPhone(),
                             enquery.getEmail(),
                             enquery.getPageName(),
-                            "lead"
+                            "lead",
+                            enquery.getEnquiryFrom(),
+                            enquery.getProjectLink()
                     );
                 } catch (Exception ignored) {
                     // Keep existing enquiry flow unchanged if Telegram fails.
