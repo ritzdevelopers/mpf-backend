@@ -9,6 +9,8 @@ public class WebStoryCategoryDto {
     private int id;
     private String categoryName;
     private String categoryDescription;
+    private String metaDescription;
+    private String metaKeywords;
     private List<WebStoryDto> webStories;
     private String storyCategoryImage;
 }

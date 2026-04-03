@@ -50,6 +50,8 @@ public class WebStoryCategoryServiceImpl implements WebStoryCategoryService {
 
                 category.setCategoryName(slug);
                 category.setCategoryDescription(webStoryCategoryDto.getCategoryDescription());
+                category.setMetaDescription(webStoryCategoryDto.getMetaDescription());
+                category.setMetaKeywords(webStoryCategoryDto.getMetaKeywords());
                 webStoryCategoryRepository.save(category);
                 response.setIsSuccess(1);
                 response.setMessage("Web story category updated successfully...");
@@ -69,6 +71,8 @@ public class WebStoryCategoryServiceImpl implements WebStoryCategoryService {
             WebStoryCategory webStoryCategory = new WebStoryCategory();
             webStoryCategory.setCategoryName(slug);
             webStoryCategory.setCategoryDescription(webStoryCategoryDto.getCategoryDescription());
+            webStoryCategory.setMetaDescription(webStoryCategoryDto.getMetaDescription());
+            webStoryCategory.setMetaKeywords(webStoryCategoryDto.getMetaKeywords());
             webStoryCategoryRepository.save(webStoryCategory);
             response.setIsSuccess(1);
             response.setMessage("Web story category saved successfully...");
@@ -87,6 +91,8 @@ public class WebStoryCategoryServiceImpl implements WebStoryCategoryService {
             webStoryCategoryDto.setId(category.getId());
             webStoryCategoryDto.setCategoryName(category.getCategoryName());
             webStoryCategoryDto.setCategoryDescription(category.getCategoryDescription());
+            webStoryCategoryDto.setMetaDescription(category.getMetaDescription());
+            webStoryCategoryDto.setMetaKeywords(category.getMetaKeywords());
             if(category.getWebStories() != null && !category.getWebStories().isEmpty()) {
                 webStoryCategoryDto.setStoryCategoryImage(category.getWebStories().get(0).getStoryImage());
             }

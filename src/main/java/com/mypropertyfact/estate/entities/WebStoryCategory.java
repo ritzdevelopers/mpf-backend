@@ -17,6 +17,10 @@ public class WebStoryCategory {
     @Column(unique = true)
     private String categoryName;
     private String categoryDescription;
+    @Column(columnDefinition = "TEXT")
+    private String metaDescription;
+    @Column(columnDefinition = "TEXT")
+    private String metaKeywords;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

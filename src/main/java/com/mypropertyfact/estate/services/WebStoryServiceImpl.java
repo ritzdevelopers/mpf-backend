@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.HtmlUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,10 @@ public class WebStoryServiceImpl implements WebStoryService {
 
     @Value("${baseUrl}")
     private String baseUrl;
+
+    /** Public UI origin; canonical is {base}/stories/{categorySlug} per AMP docs & Next.js metadata */
+    @Value("${web.story.canonical-base-url}")
+    private String webStoryCanonicalBaseUrl;
 
     @Override
     public List<WebStoryDto> getAllWebStories() {
@@ -117,11 +122,22 @@ public class WebStoryServiceImpl implements WebStoryService {
         Optional<WebStoryCategory> webStoryCategory = webStoryCategoryRepository.findByCategoryName(slug);
         List<WebStory> storyPages = new ArrayList<>();
         String categoryTitle = "Web Story"; // fallback title
+        StringBuilder metaTags = new StringBuilder();
 
         if (webStoryCategory.isPresent()) {
             WebStoryCategory category = webStoryCategory.get();
             storyPages = category.getWebStories();
             categoryTitle = category.getCategoryName();
+            if (category.getMetaDescription() != null && !category.getMetaDescription().isBlank()) {
+                metaTags.append("      <meta name=\"description\" content=\"")
+                        .append(HtmlUtils.htmlEscape(category.getMetaDescription()))
+                        .append("\">\n");
+            }
+            if (category.getMetaKeywords() != null && !category.getMetaKeywords().isBlank()) {
+                metaTags.append("      <meta name=\"keywords\" content=\"")
+                        .append(HtmlUtils.htmlEscape(category.getMetaKeywords()))
+                        .append("\">\n");
+            }
         }
 
         StringBuilder storyContent = new StringBuilder();
@@ -129,6 +145,12 @@ public class WebStoryServiceImpl implements WebStoryService {
 
         for (WebStory page : storyPages) {
             String imageUrl = baseUrl + "web-story/" + page.getStoryImage();
+            // One H1 per document (SEO); further slides use H2 with identical styling
+            String headingTag = pageCount == 1 ? "h1" : "h2";
+            String titleSafe = HtmlUtils.htmlEscape(
+                    page.getStoryTitle() != null ? page.getStoryTitle() : "");
+            String descSafe = HtmlUtils.htmlEscape(
+                    page.getStoryDescription() != null ? page.getStoryDescription() : "");
 
             storyContent.append("""
                       <amp-story-page id="page%1$d" auto-advance-after="7s">
@@ -147,18 +169,21 @@ public class WebStoryServiceImpl implements WebStoryService {
                         <amp-story-grid-layer template="vertical" class="text-layer">
                           <div class="text-overlay">
                             <div animate-in="fade-in" animate-in-duration="1s">
-                              <h1>%3$s</h1>
+                              <%3$s>%4$s</%3$s>
                             </div>
                             <div animate-in="fade-in" animate-in-delay="0.5s" animate-in-duration="1s">
-                              <p>%4$s</p>
+                              <p>%5$s</p>
                             </div>
                           </div>
                         </amp-story-grid-layer>
                       </amp-story-page>
-                    """.formatted(pageCount, imageUrl, page.getStoryTitle(), page.getStoryDescription()));
+                    """.formatted(pageCount, imageUrl, headingTag, titleSafe, descSafe));
 
             pageCount++;
         }
+
+        String canonicalBase = webStoryCanonicalBaseUrl == null ? "" : webStoryCanonicalBaseUrl.replaceAll("/+$", "");
+        String canonicalHref = canonicalBase + "/stories/" + slug;
 
         return """
                     <!doctype html>
@@ -166,7 +191,7 @@ public class WebStoryServiceImpl implements WebStoryService {
                     <head>
                       <meta charset="utf-8">
                       <title>%1$s</title>
-                      <link rel="canonical" href="self.html" />
+                      %3$s<link rel="canonical" href="%4$s" />
                       <meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
                       <link rel="icon" href="https://mypropertyfact.in/favicon.ico" type="image/x-icon">
                       <style amp-boilerplate>body{visibility:hidden}</style>
@@ -176,7 +201,8 @@ public class WebStoryServiceImpl implements WebStoryService {
                       <style amp-custom>
                                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Raleway:wght@300&display=swap');
                 
-                                 .text-overlay h1 {
+                                 .text-overlay h1,
+                                 .text-overlay h2 {
                                    font-family: 'Montserrat', sans-serif;
                                    font-weight: 700;
                                    font-size: 24px;
@@ -217,7 +243,8 @@ public class WebStoryServiceImpl implements WebStoryService {
                                  animation-delay: 0.3s;
                                  }
                 
-                                 .text-overlay h1 {
+                                 .text-overlay h1,
+                                 .text-overlay h2 {
                                    font-size: 24px;
                                    margin-bottom: 10px;
                                    color: #fff;
@@ -238,6 +265,10 @@ public class WebStoryServiceImpl implements WebStoryService {
                       </amp-story>
                     </body>
                     </html>
-                """.formatted(categoryTitle, storyContent.toString());
+                """.formatted(
+                categoryTitle,
+                storyContent.toString(),
+                metaTags.toString(),
+                HtmlUtils.htmlEscape(canonicalHref));
     }
 }
