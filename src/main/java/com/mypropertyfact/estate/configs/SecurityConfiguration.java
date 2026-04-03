@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -43,6 +44,8 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/admin/**").hasRole("SUPERADMIN")
                         .requestMatchers("/api/v1/user/**").authenticated()
                         .requestMatchers("/api/v1/users/me").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("SUPERADMIN")
+                        .requestMatchers("/api/v1/users/**").hasRole("SUPERADMIN")
                         .requestMatchers("/api/v1/auth/session").authenticated()
                         .requestMatchers("/api/v1/auth/refresh").authenticated()
                         .requestMatchers("/api/v1/auth/logout").permitAll()
