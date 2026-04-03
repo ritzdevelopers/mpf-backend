@@ -1,9 +1,11 @@
 package com.mypropertyfact.estate.controllers;
 
+import com.mypropertyfact.estate.dtos.AdminSetPasswordRequest;
 import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.services.UserService;
 import com.mypropertyfact.estate.services.UserRoleService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import com.mypropertyfact.estate.repositories.UserRepository;
 
 import java.util.List;
+import java.util.Map;
 
 @RequestMapping("/api/v1/users")
 @RestController
@@ -146,6 +149,20 @@ public class UserController {
             return ResponseEntity.ok(user);
         } catch (RuntimeException e) {
             log.error("Error updating user roles: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/{id}/password")
+    public ResponseEntity<?> setUserPassword(
+            @PathVariable Integer id,
+            @Valid @RequestBody AdminSetPasswordRequest request) {
+        try {
+            userService.setPasswordByAdmin(id, request.getNewPassword());
+            log.info("Password reset by admin for user id: {}", id);
+            return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
+        } catch (RuntimeException e) {
+            log.error("Error setting password: {}", e.getMessage());
             return ResponseEntity.notFound().build();
         }
     }
