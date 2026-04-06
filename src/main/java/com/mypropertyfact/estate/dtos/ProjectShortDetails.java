@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -25,4 +27,6 @@ public class ProjectShortDetails {
     private String projectBannerImage;
     private String builderSlug;
     private String citySlug;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

@@ -7,6 +7,7 @@ import com.mypropertyfact.estate.models.ResourceNotFoundException;
 import com.mypropertyfact.estate.models.Response;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public class BlogCategoryController {
     private final BlogCategoryService blogCategoryService;
 
     @PostMapping("/add-update")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_BLOGS')")
     public ResponseEntity<Response> addUpdateBlogCategory(@RequestBody BlogCategory blogCategory){
         return ResponseEntity.ok(blogCategoryService.addUpdateBlogCategory(blogCategory));
     }
@@ -34,6 +36,7 @@ public class BlogCategoryController {
     }
 
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_BLOGS')")
     public ResponseEntity<Response> deleteBlogCategory(@PathVariable("id")int id){
         return ResponseEntity.ok(blogCategoryService.deleteBlogCategory(id));
     }

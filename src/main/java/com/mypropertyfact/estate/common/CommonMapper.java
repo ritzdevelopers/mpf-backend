@@ -315,5 +315,7 @@ public class CommonMapper {
                 break;
             }
         }
+        projectShortDetails.setCreatedAt(project.getCreatedAt());
+        projectShortDetails.setUpdatedAt(project.getUpdatedAt());
     }
 }

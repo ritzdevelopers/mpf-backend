@@ -5,6 +5,7 @@ import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.FloorPlanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,10 +25,12 @@ public class FloorPlanController {
     }
 
     @PostMapping("/add-update")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
     public ResponseEntity<Response> addUpdateFloorPlan(@RequestBody FloorPlanDto floorPlan){
         return new ResponseEntity<>(this.floorPlanService.addUpdatePlan(floorPlan), HttpStatus.OK);
     }
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
     public ResponseEntity<Response> deleteFloorPlan(@PathVariable("id")int id){
         return new ResponseEntity<>(this.floorPlanService.deleteFloorPlan(id), HttpStatus.OK);
     }

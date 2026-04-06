@@ -7,6 +7,7 @@ import com.mypropertyfact.estate.dtos.SuccessResponse;
 import com.mypropertyfact.estate.services.HomeBannerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,18 +39,21 @@ public class HomeBannerController {
     }
 
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_WEBSITE')")
     public ResponseEntity<SuccessResponse> deleteBanner(@PathVariable Integer id) {
         homeBannerService.deleteImage(id);
         return ResponseEntity.ok(new SuccessResponse(1, "Banner deleted successfully"));
     }
 
     @PutMapping("/update/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_WEBSITE')")
     public ResponseEntity<SuccessResponse> updateBanner(@PathVariable Integer id, @RequestBody HomeBannerUpdateDto dto) {
         homeBannerService.updateBanner(id, dto.getBannerLink(), dto.getImageAlt());
         return ResponseEntity.ok(new SuccessResponse(1, "Banner updated successfully"));
     }
 
     @PostMapping("/add-banners")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_WEBSITE')")
     public ResponseEntity<SuccessResponse> addBanners(@ModelAttribute BannerUploadDto uploadDto) {
         if (uploadDto == null) {
             return ResponseEntity.badRequest()

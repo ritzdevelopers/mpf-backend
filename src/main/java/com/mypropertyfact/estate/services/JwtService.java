@@ -1,5 +1,6 @@
 package com.mypropertyfact.estate.services;
 
+import com.mypropertyfact.estate.entities.MasterRole;
 import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.repositories.UserRepository;
 
@@ -42,6 +43,9 @@ public class JwtService {
     @Value("${security.jwt.refresh.expiration-time}")
     private long jwtRefreshTokenExpiration;
 
+    @Value("${security.jwt.enquiry-unlock-expiration-ms:28800000}")
+    private long enquiryUnlockExpirationMs;
+
     private final UserRepository userRepository;
     private final UserRoleService userRoleService;
 
@@ -66,6 +70,7 @@ public class JwtService {
         Set<String> userRoles = user.getRoles() != null
                 ? user.getRoles().stream()
                         .filter(role -> role != null && role.getIsActive() != null && role.getIsActive())
+                        .filter(role -> !isUnapprovedAdminStaff(user, role))
                         .map(role -> "ROLE_" + role.getRoleName())
                         .collect(Collectors.toSet())
                 : Set.of("ROLE_USER");
@@ -75,6 +80,12 @@ public class JwtService {
         extraClaims.put("fullName", user.getFullName());
         extraClaims.put("tv", user.getTokenVersion() != null ? user.getTokenVersion() : 0);
         return buildToken(extraClaims, user, expiration);
+    }
+
+    private static boolean isUnapprovedAdminStaff(User user, MasterRole role) {
+        return role.getRoleName() != null
+                && "ADMIN".equalsIgnoreCase(role.getRoleName())
+                && Boolean.FALSE.equals(user.getAdminStaffApproved());
     }
 
     public long getExpirationTime() {
@@ -221,7 +232,8 @@ public class JwtService {
             throw new RuntimeException("User not found");
         }
         User user = userOpt.get();
-        if (userRoleService.userHasRole(user.getId(), "SUPERADMIN")) {
+        if (userRoleService.userHasRole(user.getId(), "SUPERADMIN")
+                || userRoleService.userHasRole(user.getId(), "ADMIN")) {
             Integer tokenVersion = extractTokenVersion(refreshToken);
             Integer currentVersion = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
             if (!Objects.equals(tokenVersion, currentVersion)) {
@@ -235,6 +247,38 @@ public class JwtService {
         try {
             extractAllClaims(refreshToken);
             return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public long getEnquiryUnlockExpirationMs() {
+        return enquiryUnlockExpirationMs;
+    }
+
+    public String generateEnquiryUnlockToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("purpose", "ENQUIRY_UNLOCK");
+        return Jwts
+                .builder()
+                .setClaims(claims)
+                .setSubject(user.getEmail())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + enquiryUnlockExpirationMs))
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public boolean isEnquiryUnlockTokenValid(String token, String userEmail) {
+        if (token == null || userEmail == null) {
+            return false;
+        }
+        try {
+            Claims claims = extractAllClaims(token);
+            if (!"ENQUIRY_UNLOCK".equals(claims.get("purpose"))) {
+                return false;
+            }
+            return userEmail.equals(claims.getSubject()) && !isTokenExpired(token);
         } catch (Exception e) {
             return false;
         }

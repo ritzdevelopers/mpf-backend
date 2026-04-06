@@ -9,7 +9,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -96,6 +98,34 @@ public class UserController {
     public ResponseEntity<List<User>> allUsers() {
         List <User> users = userService.allUsers();
         return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/pending-admin-approvals")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<List<User>> pendingAdminApprovals() {
+        return ResponseEntity.ok(userService.findPendingAdminStaffApprovals());
+    }
+
+    @PutMapping("/{id}/approve-admin-staff")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<?> approveAdminStaff(@PathVariable Integer id) {
+        try {
+            User user = userRoleService.approvePendingAdminStaff(id);
+            return ResponseEntity.ok(user);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", ex.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/reject-admin-staff")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<?> rejectAdminStaff(@PathVariable Integer id) {
+        try {
+            User user = userRoleService.rejectPendingAdminStaff(id);
+            return ResponseEntity.ok(user);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", ex.getMessage()));
+        }
     }
 
     @GetMapping("/{id}")

@@ -41,12 +41,15 @@ public class SecurityConfiguration {
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/v1/admin/**").hasRole("SUPERADMIN")
+                        .requestMatchers("/api/v1/admin/**").hasAnyRole("SUPERADMIN", "ADMIN")
                         .requestMatchers("/api/v1/user/**").authenticated()
                         .requestMatchers("/api/v1/users/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("SUPERADMIN")
                         .requestMatchers("/api/v1/users/**").hasRole("SUPERADMIN")
                         .requestMatchers("/api/v1/auth/session").authenticated()
+                        .requestMatchers("/api/v1/auth/admin-permission-definitions").authenticated()
+                        /** Cookie-based refresh of access token (no Bearer header required). */
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh-token").permitAll()
                         .requestMatchers("/api/v1/auth/refresh").authenticated()
                         .requestMatchers("/api/v1/auth/logout").permitAll()
                         .anyRequest().permitAll())

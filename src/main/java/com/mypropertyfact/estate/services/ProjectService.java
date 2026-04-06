@@ -406,6 +406,11 @@ public class ProjectService {
         return projectRepository.findAllProjects();
     }
 
+    @Transactional(readOnly = true)
+    public List<ProjectExportDto> findAllForExcelExport() {
+        return projectRepository.findAllForExcelExport();
+    }
+
     public ProjectFullDetails getProjectDetailsBySlug(String slug) {
         ProjectFullDetails projectFullDetails = projectRepository.findProjectFullDetails(slug).orElseThrow(() -> new IllegalArgumentException("Project not found with slug: "+ slug));
         List<Amenity> amenities = amenityRepository.findByProjectsId(projectFullDetails.getId());

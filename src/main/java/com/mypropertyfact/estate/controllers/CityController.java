@@ -7,6 +7,7 @@ import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.CityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,11 +25,13 @@ public class CityController {
     }
 
     @PostMapping("/add-new")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<?> postNewCity(@RequestBody CityDto cityDto) {
         return new ResponseEntity<>(this.cityService.postNewCity(cityDto), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<?> deleteCity(@PathVariable("id") int id) {
         return new ResponseEntity<>(this.cityService.deleteCity(id), HttpStatus.OK);
     }
@@ -39,6 +42,7 @@ public class CityController {
     }
 
     @PostMapping("/add-update")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<Response> addUpdateCity(@RequestParam(required = false) MultipartFile cityImage,
                                                   @RequestBody City city) {
         return new ResponseEntity<>(cityService.addUpdateCity(cityImage, city), HttpStatus.OK);

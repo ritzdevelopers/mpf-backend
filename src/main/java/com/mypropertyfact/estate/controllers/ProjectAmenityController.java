@@ -6,6 +6,7 @@ import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.ProjectAmenityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,6 +36,7 @@ public class ProjectAmenityController {
         return new ResponseEntity<>(this.projectAmenityService.getById(id), HttpStatus.OK);
     }
     @DeleteMapping("/delete/{projectId}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
     public ResponseEntity<Response> deleteProjectAmenity(@PathVariable("projectId")int projectId){
         return new ResponseEntity<>(this.projectAmenityService.deleteProjectAmenity(projectId), HttpStatus.OK);
     }

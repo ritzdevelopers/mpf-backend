@@ -7,6 +7,7 @@ import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.FeatureService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,6 +26,7 @@ public class FeatureController {
     }
     
     @PostMapping("/post")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_FEATURES')")
     public ResponseEntity<Response> postFeature(@RequestBody FeatureDto featureDto) {
         Response response = featureService.postFeature(featureDto);
         if (response.getIsSuccess() == 1) {
@@ -35,11 +37,13 @@ public class FeatureController {
     }
     
     @PostMapping("/post-multiple-features")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_FEATURES')")
     public ResponseEntity<Response> postMultipleFeatures(@ModelAttribute FeatureDetailedDto dto) {
         return ResponseEntity.ok(featureService.postMultipleFeatures(dto));
     }
     
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_FEATURES')")
     public ResponseEntity<Response> deleteFeature(@PathVariable("id") Long id) {
         return new ResponseEntity<>(featureService.deleteFeature(id), HttpStatus.OK);
     }

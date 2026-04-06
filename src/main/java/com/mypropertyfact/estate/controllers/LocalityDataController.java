@@ -5,6 +5,7 @@ import com.mypropertyfact.estate.entities.LocalityData;
 import com.mypropertyfact.estate.interfaces.LocalityDataService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +20,7 @@ public class LocalityDataController {
     private final LocalityDataService service;
 
     @PostMapping("/save")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_INSIGHTS')")
     public ResponseEntity<String> saveLocalityData(@RequestBody Map<String, Object> payload) {
         try {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();

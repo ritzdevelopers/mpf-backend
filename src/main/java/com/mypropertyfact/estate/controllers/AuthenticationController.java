@@ -4,6 +4,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
+import com.mypropertyfact.estate.dtos.AdminPortalRegisterRequest;
 import com.mypropertyfact.estate.dtos.LoginResponse;
 import com.mypropertyfact.estate.dtos.LoginUserDto;
 import com.mypropertyfact.estate.dtos.RegisterUserDto;
@@ -13,9 +14,11 @@ import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.repositories.MasterRoleRepository;
 import com.mypropertyfact.estate.repositories.UserRepository;
 import com.mypropertyfact.estate.services.AuthenticationService;
+import com.mypropertyfact.estate.security.AdminPermissionKeys;
 import com.mypropertyfact.estate.services.JwtService;
 import com.mypropertyfact.estate.services.OTPService;
 import com.mypropertyfact.estate.services.SendEmailHandler;
+import com.mypropertyfact.estate.services.UserRoleService;
 
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.Cookie;
@@ -24,8 +27,11 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +45,8 @@ import java.util.Set;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import jakarta.validation.Valid;
+
 @Slf4j
 @RequestMapping("/api/v1/auth")
 @RestController
@@ -49,13 +57,14 @@ public class AuthenticationController {
     private String googleClientId;
     private final JwtService jwtService;
     private final AuthenticationService authenticationService;
+    private final UserRoleService userRoleService;
     private final UserRepository userRepository;
     private final MasterRoleRepository masterRoleRepository;
     private final OTPService otpService;
     private final PasswordEncoder passwordEncoder;
     private final SendEmailHandler sendEmailHandler;
 
-    @Value("${cookies.domain}")
+    @Value("${cookies.domain:}")
     private String cookiesDomain;
 
     @Value("${http.secure}")
@@ -73,30 +82,54 @@ public class AuthenticationController {
         return ResponseEntity.ok(registeredUser);
     }
 
+    /** Role list + whether PIN is required (see {@code app.admin.registration-pin}). */
+    @GetMapping("/admin-register-meta")
+    public ResponseEntity<Map<String, Object>> adminRegisterMeta() {
+        return ResponseEntity.ok(authenticationService.getAdminRegisterMeta());
+    }
+
+    /**
+     * Self-registration from /admin/register. Defaults to USER only when {@code roleIds} is omitted.
+     * Optional ADMIN requires dashboard username. SUPERADMIN is not allowed.
+     */
+    @PostMapping("/admin-register")
+    public ResponseEntity<?> adminRegister(@Valid @RequestBody AdminPortalRegisterRequest body) {
+        try {
+            User user = authenticationService.registerAdminPortalUser(body);
+            boolean hasPendingAdmin = user.getRoles() != null && user.getRoles().stream()
+                    .anyMatch(r -> r != null && r.getRoleName() != null
+                            && "ADMIN".equalsIgnoreCase(r.getRoleName())
+                            && Boolean.TRUE.equals(r.getIsActive()))
+                    && Boolean.FALSE.equals(user.getAdminStaffApproved());
+            String message = hasPendingAdmin
+                    ? "Account created. Your Admin access request is pending approval by a Super Admin. "
+                    + "You cannot sign in to the admin dashboard until it is approved."
+                    : "Account created successfully";
+            return ResponseEntity.ok(Map.of(
+                    "message", message,
+                    "email", user.getEmail(),
+                    "pendingAdminApproval", hasPendingAdmin));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", ex.getMessage()));
+        }
+    }
+
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> authenticate(@RequestBody LoginUserDto loginUserDto,
+    public ResponseEntity<?> authenticate(@RequestBody LoginUserDto loginUserDto,
             HttpServletResponse response) {
-        User authenticatedUser = authenticationService.authenticate(loginUserDto);
+        final User authenticatedUser;
+        try {
+            authenticatedUser = authenticationService.authenticate(loginUserDto);
+        } catch (BadCredentialsException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", ex.getMessage()));
+        }
         String jwtToken = jwtService.generateToken(authenticatedUser);
         String refreshToken = jwtService.generateRefreshToken(authenticatedUser);
-        ResponseCookie cookie = ResponseCookie.from("token", jwtToken)
-                .httpOnly(true)
-                .secure(httpSecure)
-                .domain(cookiesDomain)
-                .path("/")
-                .sameSite(httpSecure ? "None" : "Lax")
-                .maxAge(accessTokenExpiration / 1000) // 1 day
-                .build();
-        ResponseCookie refresh = ResponseCookie.from("refreshToken", refreshToken)
-                .httpOnly(true)
-                .secure(httpSecure)
-                .domain(cookiesDomain)
-                .path("/")
-                .sameSite(httpSecure ? "None" : "Lax")
-                .maxAge(refreshTokenExpiration / 1000) // 7 day
-                .build();
-        response.addHeader("Set-Cookie", cookie.toString());
-        response.addHeader("Set-Cookie", refresh.toString());
+        response.addHeader("Set-Cookie", buildAuthCookie("token", jwtToken, accessTokenExpiration / 1000).toString());
+        response.addHeader("Set-Cookie",
+                buildAuthCookie("refreshToken", refreshToken, refreshTokenExpiration / 1000).toString());
         LoginResponse loginResponse = new LoginResponse();
         log.info("Response is {}", response);
         // loginResponse.setToken(jwtToken);
@@ -140,24 +173,9 @@ public class AuthenticationController {
             }
             String jwtToken = jwtService.generateToken(user);
             String refreshToken = jwtService.generateRefreshToken(user);
-            ResponseCookie cookie = ResponseCookie.from("token", jwtToken)
-                    .httpOnly(true)
-                    .secure(httpSecure)
-                    .domain(cookiesDomain)
-                    .path("/")
-                    .sameSite(httpSecure ? "None" : "Lax")
-                    .maxAge(accessTokenExpiration / 1000) // 1 day
-                    .build();
-            ResponseCookie refresh = ResponseCookie.from("refreshToken", refreshToken)
-                    .httpOnly(true)
-                    .secure(httpSecure)
-                    .domain(cookiesDomain)
-                    .path("/")
-                    .sameSite(httpSecure ? "None" : "Lax")
-                    .maxAge(refreshTokenExpiration / 1000) // 7 day
-                    .build();
-            response.addHeader("Set-Cookie", cookie.toString());
-            response.addHeader("Set-Cookie", refresh.toString());
+            response.addHeader("Set-Cookie", buildAuthCookie("token", jwtToken, accessTokenExpiration / 1000).toString());
+            response.addHeader("Set-Cookie",
+                    buildAuthCookie("refreshToken", refreshToken, refreshTokenExpiration / 1000).toString());
             LoginResponse loginResponse = new LoginResponse();
             // loginResponse.setToken(jwtToken);
             // loginResponse.setRefreshToken(refreshToken);
@@ -524,37 +542,43 @@ public class AuthenticationController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         String expiresAt = jwtService.getExpiryFromCookie(request);
+        List<String> roles = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
 
-        return ResponseEntity.ok(Map.of(
-                "email", authentication.getName(),
-                "roles", authentication.getAuthorities()
-                        .stream()
-                        .map(a -> a.getAuthority())
-                        .toList(),
-                "expiresAt", expiresAt));
+        Map<String, Object> body = new HashMap<>();
+        body.put("email", authentication.getName());
+        body.put("roles", roles);
+        body.put("expiresAt", expiresAt);
+
+        userRepository.findByEmail(authentication.getName())
+                .ifPresent(user -> {
+                    body.put("fullName", user.getFullName());
+                    body.put("dashboardUsername", user.getDashboardUsername());
+                    body.put("permissions",
+                            user.getAdminPermissions() != null
+                                    ? new ArrayList<>(user.getAdminPermissions())
+                                    : new ArrayList<String>());
+                });
+
+        return ResponseEntity.ok(body);
+    }
+
+    /**
+     * Labels and keys for Super Admin when editing Admin users (Manage Users).
+     */
+    @GetMapping("/admin-permission-definitions")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<?> adminPermissionDefinitions() {
+        return ResponseEntity.ok(AdminPermissionKeys.definitions());
     }
 
     // Handling logout
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
-        ResponseCookie accessCookie = ResponseCookie.from("token", "")
-                .httpOnly(true)
-                .secure(httpSecure)
-                .domain(cookiesDomain)
-                .path("/")
-                .sameSite(httpSecure ? "None" : "Lax")
-                .maxAge(0)
-                .build();
-        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", "")
-                .httpOnly(true)
-                .secure(httpSecure)
-                .domain(cookiesDomain)
-                .path("/")
-                .sameSite(httpSecure ? "None" : "Lax")
-                .maxAge(0)
-                .build();
-        response.addHeader("Set-Cookie", accessCookie.toString());
-        response.addHeader("Set-Cookie", refreshCookie.toString());
+        response.addHeader("Set-Cookie", buildAuthCookie("token", "", 0).toString());
+        response.addHeader("Set-Cookie", buildAuthCookie("refreshToken", "", 0).toString());
+        response.addHeader("Set-Cookie", buildAuthCookie("enquiryUnlock", "", 0).toString());
         return ResponseEntity.ok(Map.of("message", "Logged out"));
     }
 
@@ -572,15 +596,25 @@ public class AuthenticationController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         String newAccessToken = jwtService.generateTokenFromRefresh(refreshToken);
-        ResponseCookie newCookie = ResponseCookie.from("token", newAccessToken)
+        response.addHeader("Set-Cookie",
+                buildAuthCookie("token", newAccessToken, accessTokenExpiration / 1000).toString());
+        return ResponseEntity.ok(Map.of("message", "Token refreshed"));
+    }
+
+    /**
+     * Omit cookie {@code Domain} when blank so browsers use host-only cookies (needed for local dev
+     * on localhost with different ports for UI and API).
+     */
+    private ResponseCookie buildAuthCookie(String name, String value, long maxAgeSeconds) {
+        ResponseCookie.ResponseCookieBuilder b = ResponseCookie.from(name, value)
                 .httpOnly(true)
                 .secure(httpSecure)
-                .domain(cookiesDomain)
                 .path("/")
                 .sameSite(httpSecure ? "None" : "Lax")
-                .maxAge(accessTokenExpiration / 1000) // 1 day
-                .build();
-        response.addHeader("Set-Cookie", newCookie.toString());
-        return ResponseEntity.ok(Map.of("message", "Token refreshed"));
+                .maxAge(maxAgeSeconds);
+        if (cookiesDomain != null && !cookiesDomain.isBlank()) {
+            b = b.domain(cookiesDomain.trim());
+        }
+        return b.build();
     }
 }

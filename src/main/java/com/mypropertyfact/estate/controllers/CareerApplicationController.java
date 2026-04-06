@@ -6,6 +6,7 @@ import com.mypropertyfact.estate.models.Response;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,6 +29,7 @@ public class CareerApplicationController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<Response> deleteApplication(@PathVariable Long id){
         return ResponseEntity.ok(careerApplicationService.deleteCareerApplication(id));
     }

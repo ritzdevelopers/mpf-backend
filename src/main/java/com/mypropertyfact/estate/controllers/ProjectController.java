@@ -1,6 +1,7 @@
 package com.mypropertyfact.estate.controllers;
 
 import com.mypropertyfact.estate.dtos.AddUpdateProjectDto;
+import com.mypropertyfact.estate.dtos.ProjectExportDto;
 import com.mypropertyfact.estate.dtos.ProjectShortDetails;
 import com.mypropertyfact.estate.models.ProjectAmenityDto;
 import com.mypropertyfact.estate.models.Response;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,7 +30,17 @@ public class ProjectController {
         return new ResponseEntity<>(projectService.getAllProjects(), HttpStatus.OK);
     }
 
+    /**
+     * Full project rows for admin Excel export (ids, SEO, HTML descriptions, RERA, timestamps, etc.).
+     */
+    @GetMapping("/admin-export")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
+    public ResponseEntity<List<ProjectExportDto>> adminExportForExcel() {
+        return new ResponseEntity<>(projectService.findAllForExcelExport(), HttpStatus.OK);
+    }
+
     @PostMapping("/add-new")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
     public ResponseEntity<Response> saveProject(
             @RequestParam(required = false) MultipartFile projectLogo,
             @RequestParam(required = false) MultipartFile locationMap,
@@ -48,6 +60,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
     public ResponseEntity<Response> deleteProject(@PathVariable("id") int id) {
         return new ResponseEntity<>(this.projectService.deleteProject(id), HttpStatus.OK);
     }
@@ -62,6 +75,7 @@ public class ProjectController {
     }
 
     @PostMapping("/add-update-amenity")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
     public ResponseEntity<Response> addUpdateAmenity(@RequestBody ProjectAmenityDto projectAmenityDto) {
         return new ResponseEntity<>(projectService.addUpdateAmenity(projectAmenityDto), HttpStatus.OK);
     }

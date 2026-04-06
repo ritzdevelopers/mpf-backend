@@ -6,6 +6,7 @@ import com.mypropertyfact.estate.models.TopLocationByTransactionResponse;
 import com.mypropertyfact.estate.services.TopLocationsByTransactionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +27,7 @@ public class TopLocationsByTransactionController {
         return new ResponseEntity<>(topLocationsByTransactionService.addUpdateTopLocationsByTransaction(topLocationsByTransaction), HttpStatus.OK);
     }
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_INSIGHTS')")
     public ResponseEntity<Response> deleteTopLocationsByTransaction(@PathVariable("id")int id){
         return new ResponseEntity<>(topLocationsByTransactionService.deleteTopLocationsByTransaction(id), HttpStatus.OK);
     }

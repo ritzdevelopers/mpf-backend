@@ -7,6 +7,7 @@ import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.AmenityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,6 +26,7 @@ public class AmenityController {
     }
 
     @PostMapping("/post")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_AMENITIES')")
     public ResponseEntity<Response> postNewAmenity(@RequestParam(required = false) MultipartFile amenityImage,
                                                    @ModelAttribute AmenityDto amenityDto){
         Response response = this.amenityService.postAmenity(amenityImage, amenityDto);
@@ -36,12 +38,14 @@ public class AmenityController {
     }
 
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_AMENITIES')")
     public ResponseEntity<Response> deleteAmenity(@PathVariable("id") int id){
         return new ResponseEntity<>(this.amenityService.deleteAmenity(id), HttpStatus.OK);
     }
 
     @PostMapping("/post-multiple-amenities")
-    public ResponseEntity<Response> postMultipleAmenities(@ModelAttribute AmenityDetailedDto dto){
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_AMENITIES')")
+    public ResponseEntity<Response> postMultipleAmenities(@ModelAttribute AmenityDetailedDto dto) {
         return ResponseEntity.ok(amenityService.postMultipleAmenities(dto));
     }
 

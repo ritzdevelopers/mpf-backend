@@ -25,6 +25,7 @@ public class ExcelUploadController {
     private ProjectNearbyBenefitsExcelService projectNearbyBenefitsExcelService;
 
     @PostMapping("/city-zone-locality")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<Response> uploadCityZoneLocality(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "defaultProjectTypeId", required = false) Integer defaultProjectTypeId) {
@@ -41,7 +42,7 @@ public class ExcelUploadController {
      * (e.g. "thumb.jpg") that exists inside the zip.
      */
     @PostMapping("/projects")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
     public ResponseEntity<Response> uploadProjects(
             @RequestParam("file") MultipartFile excelFile,
             @RequestParam(value = "imagesZip", required = false) MultipartFile imagesZip) {
@@ -55,7 +56,7 @@ public class ExcelUploadController {
      * (e.g. GD-Goenka-International-School_7-Km). Only projects with no existing location benefits are updated.
      */
     @PostMapping("/nearby-benefits")
-//    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_NEARBY_BENEFITS')")
     public ResponseEntity<Response> uploadNearbyBenefits(@RequestParam("file") MultipartFile file) {
         return ResponseEntity.ok(projectNearbyBenefitsExcelService.uploadNearbyBenefitsExcel(file));
     }

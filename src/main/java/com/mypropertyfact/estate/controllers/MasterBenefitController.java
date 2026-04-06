@@ -5,6 +5,7 @@ import com.mypropertyfact.estate.dtos.SuccessResponse;
 import com.mypropertyfact.estate.interfaces.MasterBenefitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +24,7 @@ public class MasterBenefitController {
     }
 
     @PostMapping
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_NEARBY_BENEFITS')")
     public ResponseEntity<?> addUpdateBenefit(@RequestParam("file") MultipartFile file, @ModelAttribute MasterBenefitDto masterBenefitDto) {
         return ResponseEntity.ok(masterBenefitService.addUpdateBenefit(file, masterBenefitDto));
     }
@@ -33,6 +35,7 @@ public class MasterBenefitController {
     }
 
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_NEARBY_BENEFITS')")
     public ResponseEntity<?> deleteBenefit(@PathVariable("id")int id) {
         return ResponseEntity.ok(masterBenefitService.deleteBenefit(id));
     }

@@ -7,6 +7,7 @@ import com.mypropertyfact.estate.projections.ProjectTypeView;
 import com.mypropertyfact.estate.services.ProjectTypesService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,6 +41,7 @@ public class ProjectTypesController {
 //        return new ResponseEntity<>(this.projectTypesService.getPropertiesBySlug(url), HttpStatus.OK);
 //    }
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<Response> deleteProjectType(@PathVariable("id")int id){
         return new ResponseEntity<>(this.projectTypesService.deleteProjectType(id), HttpStatus.OK);
     }

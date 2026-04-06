@@ -6,6 +6,7 @@ import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.ProjectFaqsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,6 +25,7 @@ public class ProjectFaqsController {
         return new ResponseEntity<>(this.projectFaqsService.getAllFaqs(), HttpStatus.OK);
     }
     @PostMapping("/add-update")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
     public ResponseEntity<Response> addUpdateFaq(@RequestBody ProjectFaqDto projectFaqsDto){
         return new ResponseEntity<>(this.projectFaqsService.addUpdateFaqs(projectFaqsDto), HttpStatus.OK);
     }
@@ -33,6 +35,7 @@ public class ProjectFaqsController {
     }
 
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
     public ResponseEntity<Response> deleteFaq(@PathVariable("id")int id){
         return new ResponseEntity<>(projectFaqsService.deleteFaq(id), HttpStatus.OK);
     }

@@ -5,6 +5,7 @@ import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.HeaderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +27,7 @@ public class HeaderController {
         return new ResponseEntity<>(headerService.addUpdateHeader(headers), HttpStatus.OK);
     }
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_INSIGHTS')")
     public ResponseEntity<Response> deleteHeader(@PathVariable("id")int id){
         return new ResponseEntity<>(headerService.deleteHeader(id), HttpStatus.OK);
     }

@@ -1,5 +1,6 @@
 package com.mypropertyfact.estate.repositories;
 
+import com.mypropertyfact.estate.dtos.ProjectExportDto;
 import com.mypropertyfact.estate.dtos.ProjectFullDetails;
 import com.mypropertyfact.estate.dtos.ProjectShortDetails;
 import com.mypropertyfact.estate.entities.Project;
@@ -59,7 +60,9 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
                 p.projectLogo,
                 pdb.desktopImage,
                 b.slugUrl,
-                c.slugUrl
+                c.slugUrl,
+                p.createdAt,
+                p.updatedAt
             )
             FROM Project p
             LEFT JOIN p.projectStatus ps
@@ -76,6 +79,65 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             ORDER BY p.projectName
             """)
     List<ProjectShortDetails> findAllProjects();
+
+    @Query("""
+            SELECT new com.mypropertyfact.estate.dtos.ProjectExportDto(
+                p.id,
+                p.projectName,
+                p.slugURL,
+                b.id,
+                b.builderName,
+                c.id,
+                c.name,
+                s.stateName,
+                co.countryName,
+                co.id,
+                s.id,
+                pt.id,
+                pt.projectTypeName,
+                ps.id,
+                ps.statusName,
+                p.status,
+                p.showFeaturedProperties,
+                p.projectLocality,
+                p.projectConfiguration,
+                p.projectPrice,
+                p.ivrNo,
+                p.reraNo,
+                p.reraQr,
+                p.reraWebsite,
+                p.locationMap,
+                p.projectLogo,
+                p.projectThumbnail,
+                p.projectThumbnailAltTag,
+                p.projectLogoAltTag,
+                p.locationMapAltTag,
+                p.metaTitle,
+                p.metaKeyword,
+                p.metaDescription,
+                p.amenityDesc,
+                p.floorPlanDesc,
+                p.locationDesc,
+                p.createdAt,
+                p.updatedAt,
+                pdb.desktopImage
+            )
+            FROM Project p
+            LEFT JOIN p.builder b
+            LEFT JOIN p.city c
+            LEFT JOIN c.state s
+            LEFT JOIN s.country co
+            LEFT JOIN p.projectTypes pt
+            LEFT JOIN p.projectStatus ps
+            LEFT JOIN p.projectDesktopBanners pdb
+            WHERE (pdb.id IS NULL OR pdb.id = (
+                SELECT MIN(pdb2.id)
+                FROM ProjectDesktopBanner pdb2
+                WHERE pdb2.project = p
+            ))
+            ORDER BY p.id
+            """)
+    List<ProjectExportDto> findAllForExcelExport();
 
     @Query("""
             SELECT new com.mypropertyfact.estate.dtos.ProjectFullDetails(

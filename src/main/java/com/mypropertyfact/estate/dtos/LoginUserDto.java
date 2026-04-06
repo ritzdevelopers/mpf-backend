@@ -8,4 +8,6 @@ public class LoginUserDto {
 
     private String password;
 
+    /** Required for users with Super Admin or Admin role when signing in at /admin. */
+    private String dashboardUsername;
 }

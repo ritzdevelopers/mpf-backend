@@ -29,6 +29,10 @@ public class User implements UserDetails {
     @Column(unique = true, length = 100)
     private String email; // Made nullable for mobile-only registration
 
+    /** Separate display/login name for admin dashboard (Super Admin / Admin). Required at login with email+password. */
+    @Column(name = "dashboard_username", unique = true, length = 100)
+    private String dashboardUsername;
+
     @JsonIgnore
     @Column(nullable = false)
     private String password;
@@ -47,6 +51,12 @@ public class User implements UserDetails {
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<MasterRole> roles = new HashSet<>();
+
+    /** Granular CMS permissions for {@code ADMIN}; ignored for {@code SUPERADMIN} (all access). */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_admin_permissions", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "permission_key", length = 64)
+    private Set<String> adminPermissions = new HashSet<>();
 
     @Column(name = "location", length = 255)
     private String location;
@@ -76,6 +86,13 @@ public class User implements UserDetails {
     @Column(name = "token_version", nullable = false)
     private Integer tokenVersion = 0;
 
+    /**
+     * When false, the user has the Admin role in the database but must not receive {@code ROLE_ADMIN}
+     * in JWT/security until a Super Admin approves (self-registration flow).
+     */
+    @Column(name = "admin_staff_approved", nullable = false)
+    private Boolean adminStaffApproved = true;
+
     @CreationTimestamp
     @Column(updatable = false, name = "created_at")
     private Date createdAt;
@@ -92,6 +109,11 @@ public class User implements UserDetails {
         if (roles != null && !roles.isEmpty()) {
             for (MasterRole masterRole : roles) {
                 if (masterRole != null && masterRole.getIsActive() != null && masterRole.getIsActive()) {
+                    if (masterRole.getRoleName() != null
+                            && "ADMIN".equalsIgnoreCase(masterRole.getRoleName())
+                            && Boolean.FALSE.equals(adminStaffApproved)) {
+                        continue;
+                    }
                     authorities.add(new SimpleGrantedAuthority("ROLE_" + masterRole.getRoleName()));
                 }
             }

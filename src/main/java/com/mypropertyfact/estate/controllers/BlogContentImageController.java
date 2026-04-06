@@ -5,6 +5,7 @@ import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.interfaces.BlogContentImageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,6 +25,7 @@ public class BlogContentImageController {
     }
 
     @PostMapping("/post")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_BLOGS')")
     public ResponseEntity<Response> addUpdateContentImage(@RequestParam(required = false)
                                                           MultipartFile file,
                                                           @ModelAttribute BlogContentImage blogContentImage) {

@@ -7,6 +7,7 @@ import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.BuilderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,11 +31,13 @@ public class BuilderController {
     }
 
     @PostMapping("/add-update")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<Response> addUpdateBuilder(@RequestBody Builder builder) {
         Response response = this.builderService.addUpdateBuilder(builder);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<Response> deleteBuilder(@PathVariable("id") int id){
         return new ResponseEntity<>(this.builderService.deleteBuilder(id), HttpStatus.OK);
     }

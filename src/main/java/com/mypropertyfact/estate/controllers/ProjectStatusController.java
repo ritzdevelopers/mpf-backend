@@ -6,6 +6,7 @@ import com.mypropertyfact.estate.models.Response;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +27,7 @@ public class ProjectStatusController {
 
     // Add or update project status
     @PostMapping
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<?> addUpdateProjectStatus(@RequestBody @Valid ProjectStatusDto projectStatusDto) {
         Response response = projectStatusService.addUpdate(projectStatusDto);
         if(response.getIsSuccess() == 1){

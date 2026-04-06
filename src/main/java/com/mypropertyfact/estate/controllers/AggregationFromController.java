@@ -5,6 +5,7 @@ import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.AggregationFromService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +28,7 @@ public class AggregationFromController {
         return new ResponseEntity<>(aggregationFromService.addUpdateAggregationFrom(aggregationFrom), HttpStatus.OK);
     }
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<Response> deleteAggregationFrom(@PathVariable("id")int id){
         return new ResponseEntity<>(aggregationFromService.deleteAggregationFrom(id), HttpStatus.OK);
     }

@@ -72,18 +72,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-                if (jwtService.isTokenValid(token, userDetails)) {
-                    boolean sessionValid = true;
-                    if (userDetails instanceof User user) {
-                        boolean isSuperAdmin = user.getRoles() != null && user.getRoles().stream()
-                                .anyMatch(r -> r != null && Boolean.TRUE.equals(r.getIsActive())
-                                        && "SUPERADMIN".equalsIgnoreCase(r.getRoleName()));
-                        if (isSuperAdmin) {
-                            Integer tokenVersion = jwtService.extractTokenVersion(token);
-                            Integer currentVersion = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
-                            sessionValid = (tokenVersion != null && tokenVersion.equals(currentVersion));
+                    if (jwtService.isTokenValid(token, userDetails)) {
+                        boolean sessionValid = true;
+                        if (userDetails instanceof User user) {
+                            boolean staffSessionVersioned = user.getRoles() != null && user.getRoles().stream()
+                                    .anyMatch(r -> r != null && Boolean.TRUE.equals(r.getIsActive())
+                                            && ("SUPERADMIN".equalsIgnoreCase(r.getRoleName())
+                                                    || "ADMIN".equalsIgnoreCase(r.getRoleName())));
+                            if (staffSessionVersioned) {
+                                Integer tokenVersion = jwtService.extractTokenVersion(token);
+                                Integer currentVersion = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
+                                sessionValid = (tokenVersion != null && tokenVersion.equals(currentVersion));
+                            }
                         }
-                    }
                     if (sessionValid) {
                         UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                                 userDetails,

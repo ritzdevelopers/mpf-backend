@@ -5,6 +5,7 @@ import com.mypropertyfact.estate.interfaces.CountryService;
 import com.mypropertyfact.estate.models.Response;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -20,11 +21,13 @@ public class CountryController {
     }
 
     @PostMapping("/add-update")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<Response> addUpdate(@RequestBody CountryDto countryDto){
         return ResponseEntity.ok(countryService.addUpdate(countryDto));
     }
 
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<Response> deleteCountry(@PathVariable("id") int id){
         return ResponseEntity.ok(countryService.deleteCountry(id));
     }

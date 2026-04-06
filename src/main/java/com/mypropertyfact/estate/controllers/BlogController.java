@@ -7,6 +7,7 @@ import com.mypropertyfact.estate.models.Response;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,11 +23,13 @@ public class BlogController {
     private final BlogService blogService;
 
     @PostMapping("/add-update")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_BLOGS')")
     public ResponseEntity<Response> addUpdate(@RequestParam(required = false) MultipartFile image, @Valid @ModelAttribute BlogDto blogDto) {
         return new ResponseEntity<>(blogService.addUpdateBlog(image, blogDto), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_BLOGS')")
     public ResponseEntity<Void> delete(@PathVariable int id) {
         blogService.deleteBlog(id);
         return ResponseEntity.noContent().build();

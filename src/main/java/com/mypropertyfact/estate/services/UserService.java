@@ -13,9 +13,15 @@ import java.util.Optional;
 public class UserService{
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AdminPermissionService adminPermissionService;
+    private final UserRoleService userRoleService;
 
     public List<User> allUsers() {
         return userRepository.findAll();
+    }
+
+    public List<User> findPendingAdminStaffApprovals() {
+        return userRepository.findPendingAdminStaffApprovals();
     }
 
     public Optional<User> findById(Integer id) {
@@ -56,7 +62,17 @@ public class UserService{
         if (updatedUser.getEnabled() != null) {
             user.setEnabled(updatedUser.getEnabled());
         }
-        
+        if (updatedUser.getDashboardUsername() != null) {
+            String u = updatedUser.getDashboardUsername().trim();
+            user.setDashboardUsername(u.isEmpty() ? null : u);
+        }
+        if (updatedUser.getAdminPermissions() != null) {
+            if (userRoleService.userHasRole(id, "ADMIN")) {
+                user.setAdminPermissions(
+                        adminPermissionService.normalizePermissions(updatedUser.getAdminPermissions()));
+            }
+        }
+
         return userRepository.save(user);
     }
 
