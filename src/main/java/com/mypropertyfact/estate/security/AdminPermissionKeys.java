@@ -50,4 +50,20 @@ public final class AdminPermissionKeys {
     public static Set<String> allKeys() {
         return DEFINITION_ROWS.stream().map(r -> r.get("key")).collect(Collectors.toUnmodifiableSet());
     }
+
+    /**
+     * Returns the canonical uppercase key from {@link #allKeys()}, or null if unknown.
+     */
+    public static String canonicalizePermissionKey(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String t = raw.trim();
+        for (String k : allKeys()) {
+            if (k.equalsIgnoreCase(t)) {
+                return k;
+            }
+        }
+        return null;
+    }
 }

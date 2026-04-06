@@ -4,6 +4,7 @@ import com.mypropertyfact.estate.entities.MasterRole;
 import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.repositories.MasterRoleRepository;
 import com.mypropertyfact.estate.repositories.UserRepository;
+import com.mypropertyfact.estate.security.AdminPermissionKeys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,8 +47,13 @@ public class UserRoleService {
         if (!hasAdmin) {
             user.setAdminPermissions(new HashSet<>());
             user.setAdminStaffApproved(true);
-        } else if (!Boolean.FALSE.equals(user.getAdminStaffApproved())) {
-            user.setAdminStaffApproved(true);
+        } else {
+            if (user.getAdminPermissions() == null || user.getAdminPermissions().isEmpty()) {
+                user.setAdminPermissions(new HashSet<>(AdminPermissionKeys.allKeys()));
+            }
+            if (!Boolean.FALSE.equals(user.getAdminStaffApproved())) {
+                user.setAdminStaffApproved(true);
+            }
         }
         return userRepository.save(user);
     }
@@ -67,6 +73,9 @@ public class UserRoleService {
             throw new IllegalArgumentException("This account is not waiting for admin approval.");
         }
         user.setAdminStaffApproved(true);
+        if (user.getAdminPermissions() == null || user.getAdminPermissions().isEmpty()) {
+            user.setAdminPermissions(new HashSet<>(AdminPermissionKeys.allKeys()));
+        }
         int v = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
         user.setTokenVersion(v + 1);
         return userRepository.save(user);
