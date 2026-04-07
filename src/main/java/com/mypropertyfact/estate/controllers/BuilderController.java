@@ -2,6 +2,7 @@ package com.mypropertyfact.estate.controllers;
 
 import com.mypropertyfact.estate.dtos.BuilderResponse;
 import com.mypropertyfact.estate.dtos.BuilderDto;
+import com.mypropertyfact.estate.dtos.BuilderWriteDto;
 import com.mypropertyfact.estate.entities.Builder;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.BuilderService;
@@ -32,8 +33,8 @@ public class BuilderController {
 
     @PostMapping("/add-update")
     @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
-    public ResponseEntity<Response> addUpdateBuilder(@RequestBody Builder builder) {
-        Response response = this.builderService.addUpdateBuilder(builder);
+    public ResponseEntity<Response> addUpdateBuilder(@RequestBody BuilderWriteDto dto) {
+        Response response = this.builderService.addUpdateBuilder(dto);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
     @DeleteMapping("/delete/{id}")
