@@ -48,6 +48,10 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/users/**").hasRole("SUPERADMIN")
                         .requestMatchers("/api/v1/auth/session").authenticated()
                         .requestMatchers("/api/v1/auth/admin-permission-definitions").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/unlock-enquiries")
+                                .hasAnyRole("SUPERADMIN", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/enquiry-access-status")
+                                .hasAnyRole("SUPERADMIN", "ADMIN")
                         /** Cookie-based refresh of access token (no Bearer header required). */
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh-token").permitAll()
                         .requestMatchers("/api/v1/auth/refresh").authenticated()

@@ -23,6 +23,8 @@ public final class AdminPermissionKeys {
     public static final String MANAGE_AMENITIES = "MANAGE_AMENITIES";
     public static final String MANAGE_FEATURES = "MANAGE_FEATURES";
     public static final String MANAGE_NEARBY_BENEFITS = "MANAGE_NEARBY_BENEFITS";
+    public static final String MANAGE_PROPERTY_APPROVALS = "MANAGE_PROPERTY_APPROVALS";
+    public static final String MANAGE_ENQUIRIES = "MANAGE_ENQUIRIES";
 
     private static final List<Map<String, String>> DEFINITION_ROWS = List.of(
             entry(MANAGE_WEBSITE, "Manage website", "Home banners and similar site content"),
@@ -33,7 +35,9 @@ public final class AdminPermissionKeys {
             entry(MANAGE_WEB_STORIES, "Web story management", "Web stories and categories"),
             entry(MANAGE_AMENITIES, "Amenities", "Master amenities list"),
             entry(MANAGE_FEATURES, "Features", "Property features"),
-            entry(MANAGE_NEARBY_BENEFITS, "Nearby benefits", "Location / nearby benefit content"));
+            entry(MANAGE_NEARBY_BENEFITS, "Nearby benefits", "Location / nearby benefit content"),
+            entry(MANAGE_PROPERTY_APPROVALS, "Property approvals", "Review and approve user-submitted property listings"),
+            entry(MANAGE_ENQUIRIES, "Manage enquiries", "View leads and enquiries after entering the 4-digit code set by Super Admin"));
 
     private static Map<String, String> entry(String key, String label, String description) {
         Map<String, String> m = new LinkedHashMap<>();

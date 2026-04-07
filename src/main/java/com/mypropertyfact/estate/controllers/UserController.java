@@ -136,11 +136,14 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Integer id, @RequestBody User updatedUser) {
+    public ResponseEntity<?> updateUser(@PathVariable Integer id, @RequestBody User updatedUser) {
         try {
             User user = userService.updateUser(id, updatedUser);
             log.info("User updated successfully: {}", user.getEmail());
             return ResponseEntity.ok(user);
+        } catch (IllegalArgumentException e) {
+            log.warn("User update validation: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         } catch (RuntimeException e) {
             log.error("Error updating user: {}", e.getMessage());
             return ResponseEntity.notFound().build();

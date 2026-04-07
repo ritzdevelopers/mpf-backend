@@ -4,9 +4,10 @@ import com.mypropertyfact.estate.dtos.SuccessResponse;
 import com.mypropertyfact.estate.entities.Enquery;
 import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.models.Response;
+import com.mypropertyfact.estate.services.EnquiryAccessService;
 import com.mypropertyfact.estate.services.EnquiryService;
-import com.mypropertyfact.estate.services.UserRoleService;
 import lombok.RequiredArgsConstructor;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -24,13 +25,13 @@ import java.util.Map;
 public class EnquiryController {
 
     private final EnquiryService enquiryService;
-    private final UserRoleService userRoleService;
+    private final EnquiryAccessService enquiryAccessService;
 
     @GetMapping("/get-all")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<Enquery>> getAll() {
+    public ResponseEntity<List<Enquery>> getAll(HttpServletRequest request) {
         User user = requireUser();
-        assertSuperAdmin(user);
+        assertEnquiryAccess(user, request);
         return new ResponseEntity<>(enquiryService.getAll(), HttpStatus.OK);
     }
 
@@ -41,9 +42,9 @@ public class EnquiryController {
 
     @DeleteMapping("/delete/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Response> deleteEnquiry(@PathVariable int id) {
+    public ResponseEntity<Response> deleteEnquiry(@PathVariable int id, HttpServletRequest request) {
         User user = requireUser();
-        assertSuperAdmin(user);
+        assertEnquiryAccess(user, request);
         return new ResponseEntity<>(enquiryService.deleteEnquiry(id), HttpStatus.OK);
     }
 
@@ -51,17 +52,19 @@ public class EnquiryController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<SuccessResponse> updateStatus(
             @PathVariable("enquiryId") int enquiryId,
-            @RequestBody Map<String, String> requestBody) {
+            @RequestBody Map<String, String> requestBody,
+            HttpServletRequest request) {
         User user = requireUser();
-        assertSuperAdmin(user);
+        assertEnquiryAccess(user, request);
         return ResponseEntity.ok(enquiryService.updateStatus(enquiryId, requestBody.get("status")));
     }
 
     @GetMapping("/by-property/{propertyId}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<Enquery>> getByPropertyId(@PathVariable Long propertyId) {
+    public ResponseEntity<List<Enquery>> getByPropertyId(
+            @PathVariable Long propertyId, HttpServletRequest request) {
         User user = requireUser();
-        assertSuperAdmin(user);
+        assertEnquiryAccess(user, request);
         return new ResponseEntity<>(enquiryService.getByPropertyId(propertyId), HttpStatus.OK);
     }
 
@@ -85,9 +88,10 @@ public class EnquiryController {
         return (User) auth.getPrincipal();
     }
 
-    private void assertSuperAdmin(User user) {
-        if (!userRoleService.userHasRole(user.getId(), "SUPERADMIN")) {
-            throw new AccessDeniedException("Only Super Admins can manage enquiries.");
+    private void assertEnquiryAccess(User user, HttpServletRequest request) {
+        if (!enquiryAccessService.canAccessEnquiries(user, request)) {
+            throw new AccessDeniedException(
+                    "Enquiries access denied. Enter your 4-digit code on the Enquiries page, or sign in as Super Admin.");
         }
     }
 }

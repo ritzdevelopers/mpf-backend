@@ -56,6 +56,10 @@ public class AdminPermissionService {
         }
         Set<String> perms = user.getAdminPermissions();
         if (perms == null || perms.isEmpty()) {
+            // Enquiries are never included in legacy "empty = all CMS" — must be granted explicitly.
+            if (AdminPermissionKeys.MANAGE_ENQUIRIES.equals(want)) {
+                return false;
+            }
             return legacyFullAccessWhenEmpty;
         }
         return perms.stream()

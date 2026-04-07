@@ -1,6 +1,7 @@
 package com.mypropertyfact.estate.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -92,6 +93,24 @@ public class User implements UserDetails {
      */
     @Column(name = "admin_staff_approved", nullable = false)
     private Boolean adminStaffApproved = true;
+
+    /** Bcrypt hash of the 4-digit enquiries PIN; only for admins with MANAGE_ENQUIRIES. */
+    @JsonIgnore
+    @Column(name = "enquiry_access_pin_hash", length = 255)
+    private String enquiryAccessPinHash;
+
+    /**
+     * Super Admin only: optional on PUT when saving a user. Never returned in JSON.
+     * Exactly four digits when set.
+     */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @Transient
+    private String enquiryAccessPin;
+
+    @JsonProperty("enquiryAccessPinSet")
+    public boolean isEnquiryAccessPinSet() {
+        return enquiryAccessPinHash != null && !enquiryAccessPinHash.isBlank();
+    }
 
     @CreationTimestamp
     @Column(updatable = false, name = "created_at")

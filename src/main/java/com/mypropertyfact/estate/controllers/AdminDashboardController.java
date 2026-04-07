@@ -4,7 +4,9 @@ import com.mypropertyfact.estate.dtos.DashboardStatsResponse;
 import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.repositories.EnqueryRepository;
 import com.mypropertyfact.estate.repositories.UserRepository;
+import com.mypropertyfact.estate.services.EnquiryAccessService;
 import com.mypropertyfact.estate.services.UserRoleService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -21,12 +23,14 @@ public class AdminDashboardController {
     private final UserRepository userRepository;
     private final EnqueryRepository enqueryRepository;
     private final UserRoleService userRoleService;
+    private final EnquiryAccessService enquiryAccessService;
 
     /**
-     * Counts for the admin dashboard. User and enquiry totals are only exposed to Super Admins.
+     * Counts for the admin dashboard. User total: Super Admins only.
+     * Enquiry total: Super Admins, or Admins with enquiries access (permission + unlock cookie).
      */
     @GetMapping("/dashboard-stats")
-    public ResponseEntity<DashboardStatsResponse> dashboardStats() {
+    public ResponseEntity<DashboardStatsResponse> dashboardStats(HttpServletRequest request) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof User user)) {
             return ResponseEntity.status(401).build();
@@ -37,6 +41,8 @@ public class AdminDashboardController {
 
         if (userRoleService.userHasRole(user.getId(), "SUPERADMIN")) {
             userCount = userRepository.count();
+            enquiryCount = enqueryRepository.count();
+        } else if (enquiryAccessService.canAccessEnquiries(user, request)) {
             enquiryCount = enqueryRepository.count();
         }
 

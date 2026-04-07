@@ -2,6 +2,7 @@ package com.mypropertyfact.estate.services;
 
 import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.repositories.UserRepository;
+import com.mypropertyfact.estate.security.AdminPermissionKeys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -70,6 +71,29 @@ public class UserService{
             if (userRoleService.userHasRole(id, "ADMIN")) {
                 user.setAdminPermissions(
                         adminPermissionService.normalizePermissions(updatedUser.getAdminPermissions()));
+            }
+        }
+
+        boolean wantsEnquiry = user.getAdminPermissions() != null
+                && user.getAdminPermissions().stream()
+                .anyMatch(p -> p != null
+                        && AdminPermissionKeys.MANAGE_ENQUIRIES.equalsIgnoreCase(p.trim()));
+
+        if (!wantsEnquiry) {
+            user.setEnquiryAccessPinHash(null);
+        } else {
+            if (updatedUser.getEnquiryAccessPin() != null) {
+                String rawPin = updatedUser.getEnquiryAccessPin().trim();
+                if (!rawPin.isEmpty()) {
+                    if (!rawPin.matches("\\d{4}")) {
+                        throw new IllegalArgumentException("Enquiries access code must be exactly 4 digits.");
+                    }
+                    user.setEnquiryAccessPinHash(passwordEncoder.encode(rawPin));
+                }
+            }
+            if (user.getEnquiryAccessPinHash() == null || user.getEnquiryAccessPinHash().isBlank()) {
+                throw new IllegalArgumentException(
+                        "Set a 4-digit enquiries access code when Manage enquiries is enabled.");
             }
         }
 

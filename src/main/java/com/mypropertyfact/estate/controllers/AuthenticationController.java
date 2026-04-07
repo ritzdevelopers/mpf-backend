@@ -13,7 +13,9 @@ import com.mypropertyfact.estate.entities.MasterRole;
 import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.repositories.MasterRoleRepository;
 import com.mypropertyfact.estate.repositories.UserRepository;
+import com.mypropertyfact.estate.services.AdminPermissionService;
 import com.mypropertyfact.estate.services.AuthenticationService;
+import com.mypropertyfact.estate.services.EnquiryAccessService;
 import com.mypropertyfact.estate.security.AdminPermissionKeys;
 import com.mypropertyfact.estate.services.JwtService;
 import com.mypropertyfact.estate.services.OTPService;
@@ -63,6 +65,8 @@ public class AuthenticationController {
     private final OTPService otpService;
     private final PasswordEncoder passwordEncoder;
     private final SendEmailHandler sendEmailHandler;
+    private final AdminPermissionService adminPermissionService;
+    private final EnquiryAccessService enquiryAccessService;
 
     @Value("${cookies.domain:}")
     private String cookiesDomain;
@@ -571,6 +575,76 @@ public class AuthenticationController {
     @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<?> adminPermissionDefinitions() {
         return ResponseEntity.ok(AdminPermissionKeys.definitions());
+    }
+
+    /**
+     * Whether the current admin may use enquiries APIs and if they must enter the 4-digit PIN first.
+     */
+    @GetMapping("/enquiry-access-status")
+    public ResponseEntity<?> enquiryAccessStatus(
+            Authentication authentication, HttpServletRequest request) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        if (userRoleService.userHasRole(user.getId(), "SUPERADMIN")) {
+            return ResponseEntity.ok(Map.of(
+                    "hasPermission", true,
+                    "needsCode", false,
+                    "unlocked", true));
+        }
+        boolean hasPerm = adminPermissionService.can(user, AdminPermissionKeys.MANAGE_ENQUIRIES);
+        if (!hasPerm) {
+            return ResponseEntity.ok(Map.of(
+                    "hasPermission", false,
+                    "needsCode", false,
+                    "unlocked", false));
+        }
+        User db = userRepository.findById(user.getId()).orElse(user);
+        boolean pinConfigured = db.getEnquiryAccessPinHash() != null && !db.getEnquiryAccessPinHash().isBlank();
+        boolean unlocked = enquiryAccessService.canAccessEnquiries(db, request);
+        return ResponseEntity.ok(Map.of(
+                "hasPermission", true,
+                "needsCode", pinConfigured,
+                "pinConfigured", pinConfigured,
+                "unlocked", unlocked));
+    }
+
+    /**
+     * Validates the 4-digit PIN and sets the HttpOnly {@code enquiryUnlock} cookie (ADMIN with permission only).
+     */
+    @PostMapping("/unlock-enquiries")
+    public ResponseEntity<?> unlockEnquiries(
+            @RequestBody Map<String, String> body,
+            HttpServletResponse response,
+            Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        if (userRoleService.userHasRole(user.getId(), "SUPERADMIN")) {
+            return ResponseEntity.ok(Map.of("unlocked", true));
+        }
+        if (!adminPermissionService.can(user, AdminPermissionKeys.MANAGE_ENQUIRIES)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "You do not have enquiries access."));
+        }
+        User db = userRepository.findById(user.getId()).orElseThrow();
+        if (db.getEnquiryAccessPinHash() == null || db.getEnquiryAccessPinHash().isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "No access code is configured. Contact a Super Admin."));
+        }
+        String code = body != null ? body.get("code") : null;
+        if (code == null || !code.trim().matches("\\d{4}")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "Enter a valid 4-digit code."));
+        }
+        if (!passwordEncoder.matches(code.trim(), db.getEnquiryAccessPinHash())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Incorrect code."));
+        }
+        long maxAgeSeconds = jwtService.getEnquiryUnlockExpirationMs() / 1000L;
+        String token = jwtService.generateEnquiryUnlockToken(db);
+        response.addHeader("Set-Cookie", buildAuthCookie("enquiryUnlock", token, maxAgeSeconds).toString());
+        return ResponseEntity.ok(Map.of("unlocked", true));
     }
 
     // Handling logout
