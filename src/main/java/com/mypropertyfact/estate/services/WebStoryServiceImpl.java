@@ -30,6 +30,8 @@ public class WebStoryServiceImpl implements WebStoryService {
 
     private final FileUtils fileUtils;
 
+    private final AdminDashboardActivityService adminDashboardActivityService;
+
     @Value("${upload_dir}")
     private String uploadDir;
 
@@ -83,6 +85,10 @@ public class WebStoryServiceImpl implements WebStoryService {
                 }
                 webStoryCategory.ifPresent(webStory::setWebStoryCategory);
                 webStoryRepository.save(webStory);
+                adminDashboardActivityService.recordForCurrentUser(
+                        AdminDashboardActivityService.TASK_WEB_STORY,
+                        "Updated web story: " + webStoryDto.getStoryTitle(),
+                        "/admin/dashboard/web-story");
                 response.setMessage("Web story updated successfully...");
                 response.setIsSuccess(1);
             }
@@ -93,6 +99,10 @@ public class WebStoryServiceImpl implements WebStoryService {
             webStoryCategory.ifPresent(webStory::setWebStoryCategory);
             webStory.setStoryImage(savedImageName);
             webStoryRepository.save(webStory);
+            adminDashboardActivityService.recordForCurrentUser(
+                    AdminDashboardActivityService.TASK_WEB_STORY,
+                    "Added web story: " + webStoryDto.getStoryTitle(),
+                    "/admin/dashboard/web-story");
             response.setIsSuccess(1);
             response.setMessage("Web story saved successfully...");
         }

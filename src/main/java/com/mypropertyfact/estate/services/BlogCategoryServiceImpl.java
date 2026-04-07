@@ -27,6 +27,8 @@ public class BlogCategoryServiceImpl implements BlogCategoryService {
 
     private final FileUtils fileUtils;
 
+    private final AdminDashboardActivityService adminDashboardActivityService;
+
     @Override
     public Response addUpdateBlogCategory(BlogCategory blogCategory) {
         if (blogCategory == null) {
@@ -37,9 +39,17 @@ public class BlogCategoryServiceImpl implements BlogCategoryService {
             dbBlogCategory.setCategoryName(blogCategory.getCategoryName());
             dbBlogCategory.setCategoryDescription(blogCategory.getCategoryDescription());
             blogCategoryRepository.save(dbBlogCategory);
+            adminDashboardActivityService.recordForCurrentUser(
+                    AdminDashboardActivityService.TASK_BLOG_CATEGORY,
+                    "Updated blog category: " + dbBlogCategory.getCategoryName(),
+                    "/admin/dashboard/manage-categories");
             return new Response(1, "Blog category updated successfully...", 0);
         }
         blogCategoryRepository.save(blogCategory);
+        adminDashboardActivityService.recordForCurrentUser(
+                AdminDashboardActivityService.TASK_BLOG_CATEGORY,
+                "Added blog category: " + blogCategory.getCategoryName(),
+                "/admin/dashboard/manage-categories");
         return new Response(1, "Blog category saved successfully...", 0);
     }
 

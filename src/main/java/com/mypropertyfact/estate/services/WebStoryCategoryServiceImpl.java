@@ -23,6 +23,8 @@ public class WebStoryCategoryServiceImpl implements WebStoryCategoryService {
 
     private final FileUtils fileUtils;
 
+    private final AdminDashboardActivityService adminDashboardActivityService;
+
     @Value("${upload_dir}")
     private String uploadDir;
 
@@ -53,6 +55,10 @@ public class WebStoryCategoryServiceImpl implements WebStoryCategoryService {
                 category.setMetaDescription(webStoryCategoryDto.getMetaDescription());
                 category.setMetaKeywords(webStoryCategoryDto.getMetaKeywords());
                 webStoryCategoryRepository.save(category);
+                adminDashboardActivityService.recordForCurrentUser(
+                        AdminDashboardActivityService.TASK_WEB_STORY_CATEGORY,
+                        "Updated web story category: " + category.getCategoryName(),
+                        "/admin/dashboard/web-story-category");
                 response.setIsSuccess(1);
                 response.setMessage("Web story category updated successfully...");
             } else {
@@ -74,6 +80,10 @@ public class WebStoryCategoryServiceImpl implements WebStoryCategoryService {
             webStoryCategory.setMetaDescription(webStoryCategoryDto.getMetaDescription());
             webStoryCategory.setMetaKeywords(webStoryCategoryDto.getMetaKeywords());
             webStoryCategoryRepository.save(webStoryCategory);
+            adminDashboardActivityService.recordForCurrentUser(
+                    AdminDashboardActivityService.TASK_WEB_STORY_CATEGORY,
+                    "Added web story category: " + webStoryCategory.getCategoryName(),
+                    "/admin/dashboard/web-story-category");
             response.setIsSuccess(1);
             response.setMessage("Web story category saved successfully...");
         }

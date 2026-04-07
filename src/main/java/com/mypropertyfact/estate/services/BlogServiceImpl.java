@@ -44,6 +44,7 @@ public class BlogServiceImpl implements BlogService {
 
     private final FileUtils fileUtils;
 
+    private final AdminDashboardActivityService adminDashboardActivityService;
 
     @Override
     public Response addUpdateBlog(MultipartFile blogImage, BlogDto blogDto) {
@@ -100,6 +101,10 @@ public class BlogServiceImpl implements BlogService {
                 existing.setBlogImage(blogImageName);
             }
             blogRepository.save(existing);
+            adminDashboardActivityService.recordForCurrentUser(
+                    AdminDashboardActivityService.TASK_BLOG,
+                    "Updated blog: " + blogDto.getBlogTitle(),
+                    "/admin/dashboard/manage-blogs");
             return new Response(1, "Blog updated successfully...", 0);
         }
 
@@ -109,7 +114,7 @@ public class BlogServiceImpl implements BlogService {
         }
         Blog blog = new Blog();
         blogCategory.ifPresent(blog::setBlogCategory);
-        city.ifPresent(existing::setCity);
+        city.ifPresent(blog::setCity);
         blog.setBlogTitle(blogDto.getBlogTitle());
         blog.setBlogDescription(blogDto.getBlogDescription());
         blog.setSlugUrl(blogDto.getSlugUrl());
@@ -118,6 +123,10 @@ public class BlogServiceImpl implements BlogService {
         blog.setBlogMetaDescription(blogDto.getBlogMetaDescription());
         blog.setBlogImage(blogImageName);
         blogRepository.save(blog);
+        adminDashboardActivityService.recordForCurrentUser(
+                AdminDashboardActivityService.TASK_BLOG,
+                "Added blog: " + blogDto.getBlogTitle(),
+                "/admin/dashboard/manage-blogs");
         return new Response(1, "Blog saved successfully...", 0);
     }
 

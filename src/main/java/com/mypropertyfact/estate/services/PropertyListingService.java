@@ -55,6 +55,8 @@ public class PropertyListingService {
 
     private final PropertyListingNearbyBenefitRepository propertyListingNearbyBenefitRepository;
 
+    private final AdminDashboardActivityService adminDashboardActivityService;
+
     @Value("${upload_dir:uploads/}")
     private String uploadDir;
 
@@ -755,7 +757,10 @@ public class PropertyListingService {
         listing.setApprovedBy(admin);
         listing.setApprovedAt(LocalDateTime.now());
 
-        return propertyListingRepository.save(listing);
+        PropertyListing saved = propertyListingRepository.save(listing);
+        recordPropertyReviewActivity(
+                saved, AdminDashboardActivityService.TASK_PROPERTY_APPROVED);
+        return saved;
     }
 
     /**
@@ -771,7 +776,31 @@ public class PropertyListingService {
         listing.setApprovedAt(LocalDateTime.now());
         listing.setRejectionReason(reason);
 
-        return propertyListingRepository.save(listing);
+        PropertyListing saved = propertyListingRepository.save(listing);
+        recordPropertyReviewActivity(
+                saved, AdminDashboardActivityService.TASK_PROPERTY_REJECTED);
+        return saved;
+    }
+
+    private void recordPropertyReviewActivity(PropertyListing listing, String taskType) {
+        if (listing == null || listing.getId() == null) {
+            return;
+        }
+        String label = listing.getTitle();
+        if (label == null || label.isBlank()) {
+            label = listing.getProjectName();
+        }
+        if (label == null || label.isBlank()) {
+            label = "Listing #" + listing.getId();
+        }
+        String prefix =
+                AdminDashboardActivityService.TASK_PROPERTY_REJECTED.equals(taskType)
+                        ? "Rejected: "
+                        : "Approved: ";
+        adminDashboardActivityService.recordForCurrentUser(
+                taskType,
+                prefix + label,
+                "/admin/dashboard/property-approvals/" + listing.getId());
     }
 
     /**
