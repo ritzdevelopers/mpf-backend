@@ -66,9 +66,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String userEmail = jwtService.extractUsername(token);
 
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-            if (userEmail != null && authentication == null) {
+            // Always apply a valid JWT to the context. Do not require authentication == null:
+            // an AnonymousAuthenticationToken or stale context would otherwise skip this and
+            // @PreAuthorize("@adminPermissionService.can(...)") would see no User principal → 403.
+            if (userEmail != null && !userEmail.isBlank()) {
 
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
