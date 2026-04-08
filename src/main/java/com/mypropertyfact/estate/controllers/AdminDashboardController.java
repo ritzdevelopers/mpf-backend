@@ -28,6 +28,15 @@ public class AdminDashboardController {
 
     private final UserRepository userRepository;
     private final EnqueryRepository enqueryRepository;
+    private final com.mypropertyfact.estate.repositories.ProjectRepository projectRepository;
+    private final com.mypropertyfact.estate.repositories.BlogRepository blogRepository;
+    private final com.mypropertyfact.estate.repositories.BlogCategoryRepository blogCategoryRepository;
+    private final com.mypropertyfact.estate.repositories.CityRepository cityRepository;
+    private final com.mypropertyfact.estate.repositories.BuilderRepository builderRepository;
+    private final com.mypropertyfact.estate.repositories.AmenityRepository amenityRepository;
+    private final com.mypropertyfact.estate.repositories.WebStoryCategoryRepository webStoryCategoryRepository;
+    private final com.mypropertyfact.estate.repositories.WebStoryRepository webStoryRepository;
+    private final com.mypropertyfact.estate.repositories.ProjectTypeRepository projectTypeRepository;
     private final UserRoleService userRoleService;
     private final EnquiryAccessService enquiryAccessService;
     private final AdminDashboardActivityService adminDashboardActivityService;
@@ -45,15 +54,50 @@ public class AdminDashboardController {
 
         long userCount = 0L;
         long enquiryCount = 0L;
+        long projectCount = 0L;
+        long blogCount = 0L;
+        long blogCategoryCount = 0L;
+        long cityCount = 0L;
+        long builderCount = 0L;
+        long amenityCount = 0L;
+        long webStoryCategoryCount = 0L;
+        long webStoryCount = 0L;
+        long projectTypeCount = 0L;
 
         if (userRoleService.userHasRole(user.getId(), "SUPERADMIN")) {
             userCount = userRepository.count();
             enquiryCount = enqueryRepository.count();
-        } else if (enquiryAccessService.canAccessEnquiries(user, request)) {
-            enquiryCount = enqueryRepository.count();
+            projectCount = projectRepository.count();
+            blogCount = blogRepository.count();
+            blogCategoryCount = blogCategoryRepository.count();
+            cityCount = cityRepository.count();
+            builderCount = builderRepository.count();
+            amenityCount = amenityRepository.count();
+            webStoryCategoryCount = webStoryCategoryRepository.count();
+            webStoryCount = webStoryRepository.count();
+            projectTypeCount = projectTypeRepository.count();
+        } else {
+            if (enquiryAccessService.canAccessEnquiries(user, request)) {
+                enquiryCount = enqueryRepository.count();
+            }
+            if (userRoleService.userHasRole(user.getId(), "ADMIN")) {
+                // Admins typically have access to some or all of these depending on finer permissions.
+                // For the aggregated dashboard stats endpoint we will return the global counts and the UI will gate them.
+                projectCount = projectRepository.count();
+                blogCount = blogRepository.count();
+                blogCategoryCount = blogCategoryRepository.count();
+                cityCount = cityRepository.count();
+                builderCount = builderRepository.count();
+                amenityCount = amenityRepository.count();
+                webStoryCategoryCount = webStoryCategoryRepository.count();
+                webStoryCount = webStoryRepository.count();
+                projectTypeCount = projectTypeRepository.count();
+            }
         }
 
-        return ResponseEntity.ok(new DashboardStatsResponse(userCount, enquiryCount));
+        return ResponseEntity.ok(new DashboardStatsResponse(
+                userCount, enquiryCount, projectCount, blogCount, blogCategoryCount, cityCount, builderCount, amenityCount, webStoryCategoryCount, webStoryCount, projectTypeCount
+        ));
     }
 
     /**
