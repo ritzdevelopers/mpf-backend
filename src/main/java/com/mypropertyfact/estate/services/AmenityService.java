@@ -47,8 +47,10 @@ public class AmenityService {
         String amenityImage = "";
         String amenityUploadDir = uploadAmenityDir.concat("amenity/");
         try {
-            if (dto.getAmenitiesFiles() == null) {
-                response.setMessage("Amenities are required !");
+            if (dto.getAmenitiesFiles() == null || dto.getAmenitiesFiles().isEmpty()) {
+                response.setIsSuccess(0);
+                response.setMessage("Amenities are required ! Use POST /amenity/post to update a single amenity (title, alt, optional image).");
+                return response;
             }
             dto.getAmenitiesFiles().forEach(file -> {
                 if (!fileUtils.isTypeImage(file)) {
@@ -99,8 +101,9 @@ public class AmenityService {
 
     public Response postAmenity(MultipartFile file, AmenityDto amenityDto) {
         Response response = new Response();
-        // Validate amenity data
-        if (amenityDto.getAltTag().isEmpty() || amenityDto.getTitle().isEmpty()) {
+        String title = amenityDto.getTitle() != null ? amenityDto.getTitle().trim() : "";
+        String altTag = amenityDto.getAltTag() != null ? amenityDto.getAltTag().trim() : "";
+        if (title.isEmpty() || altTag.isEmpty()) {
             response.setMessage(Constants.AMENITY_TITLE_ALT_TAG_REQUIRED);
             return response;
         }
@@ -112,24 +115,27 @@ public class AmenityService {
         String savedFileName = fileUtils.saveOriginalImage(file, uploadDir);
         if (amenityDto.getId() > 0) {
             Optional<Amenity> dbAmenity = this.amenityRepository.findById(amenityDto.getId());
-            if (dbAmenity.isPresent()) {
-                dbAmenity.get().setTitle(amenityDto.getTitle());
-                dbAmenity.get().setAltTag(amenityDto.getAltTag());
-                dbAmenity.get().setStatus(true);
-                if (savedFileName != null && !savedFileName.isEmpty()) {
-                    if(dbAmenity.get().getAmenityImageUrl() != null && !dbAmenity.get().getAmenityImageUrl().isBlank()) {
-                        fileUtils.deleteFileFromDestination(dbAmenity.get().getAmenityImageUrl(), uploadDir);
-                    }
-                    dbAmenity.get().setAmenityImageUrl(savedFileName);
-                }
-                amenityRepository.save(dbAmenity.get());
+            if (dbAmenity.isEmpty()) {
+                response.setMessage("Amenity not found for id: " + amenityDto.getId());
+                return response;
             }
+            Amenity existing = dbAmenity.get();
+            existing.setTitle(title);
+            existing.setAltTag(altTag);
+            existing.setStatus(true);
+            if (savedFileName != null && !savedFileName.isEmpty()) {
+                if (existing.getAmenityImageUrl() != null && !existing.getAmenityImageUrl().isBlank()) {
+                    fileUtils.deleteFileFromDestination(existing.getAmenityImageUrl(), uploadDir);
+                }
+                existing.setAmenityImageUrl(savedFileName);
+            }
+            amenityRepository.save(existing);
             response.setMessage("Amenity Updated Successfully...");
             response.setIsSuccess(1);
         } else {
             Amenity amenity = new Amenity();
-            amenity.setTitle(amenityDto.getTitle());
-            amenity.setAltTag(amenityDto.getAltTag());
+            amenity.setTitle(title);
+            amenity.setAltTag(altTag);
             amenity.setAmenityImageUrl(savedFileName);
             amenity.setStatus(true);
             amenity.setCreatedAt(LocalDateTime.now());
