@@ -52,7 +52,10 @@ public class CityService {
         cityDto.setSlugURL(fileUtils.generateSlug(cityDto.getCityName()));
         Optional<State> state = stateRepository.findById(cityDto.getStateId());
         if (cityDto.getId() != 0) {
-            Optional<City> savedCity = cityRepository.findById(cityDto.getDistrictId());
+            Optional<City> savedCity = cityRepository.findById(cityDto.getId());
+            if (savedCity.isEmpty()) {
+                return new Response(0, "City not found", 0);
+            }
             savedCity.ifPresent(city -> {
                 state.ifPresent(city::setState);
                 commonMapper.mapCityToCityDto(city, cityDto);

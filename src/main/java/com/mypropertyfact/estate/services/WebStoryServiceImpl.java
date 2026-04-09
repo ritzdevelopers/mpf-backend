@@ -38,8 +38,8 @@ public class WebStoryServiceImpl implements WebStoryService {
     @Value("${baseUrl}")
     private String baseUrl;
 
-    /** Public UI origin; canonical is {base}/stories/{categorySlug} per AMP docs & Next.js metadata */
-    @Value("${web.story.canonical-base-url}")
+    /** Public UI origin; canonical is {base}/stories/{categorySlug}. Falls back for local/dev startup safety. */
+    @Value("${web.story.canonical-base-url:https://mypropertyfact.in}")
     private String webStoryCanonicalBaseUrl;
 
     @Override
