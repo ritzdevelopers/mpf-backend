@@ -51,7 +51,8 @@ public class AuthenticationService {
         user.setFullName(fullName);
         user.setEmail(input.getEmail());
         user.setPassword(passwordEncoder.encode(input.getPassword()));
-        
+        user.setEnabled(true);
+
         Set<MasterRole> roles = new HashSet<>();
         addDefaultUserRole(roles);
         user.setRoles(roles);
@@ -179,7 +180,10 @@ public class AuthenticationService {
                         }
                 );
         user.setRoles(roles);
-        
+        user.setEnabled(true);
+        user.setVerified(true);
+        user.setAdminStaffApproved(true);
+
         // Generate a secure random password (never used for login)
         String randomPassword = UUID.randomUUID().toString();
         user.setPassword(passwordEncoder.encode(randomPassword));

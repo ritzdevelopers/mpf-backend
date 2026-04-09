@@ -167,8 +167,12 @@ public class User implements UserDetails {
         return true;
     }
 
+    /**
+     * Spring Security treats {@code false} here as "User is disabled" at login.
+     * DB {@code NULL} must not lock out accounts (legacy / migrated rows).
+     */
     @Override
     public boolean isEnabled() {
-        return enabled != null && enabled;
+        return !Boolean.FALSE.equals(enabled);
     }
 }
