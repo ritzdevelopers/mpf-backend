@@ -194,14 +194,18 @@ public class WebStoryServiceImpl implements WebStoryService {
 
         String canonicalBase = webStoryCanonicalBaseUrl == null ? "" : webStoryCanonicalBaseUrl.replaceAll("/+$", "");
         String canonicalHref = canonicalBase + "/stories/" + slug;
+        String canonicalEscaped = HtmlUtils.htmlEscape(canonicalHref);
 
         return """
                     <!doctype html>
-                    <html>
+                    <html lang="en-IN">
                     <head>
                       <meta charset="utf-8">
                       <title>%1$s</title>
                       %3$s<link rel="canonical" href="%4$s" />
+                      <link rel="alternate" hreflang="en-IN" href="%4$s" />
+                      <link rel="alternate" hreflang="en" href="%4$s" />
+                      <link rel="alternate" hreflang="x-default" href="%4$s" />
                       <meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
                       <link rel="icon" href="https://mypropertyfact.in/favicon.ico" type="image/x-icon">
                       <style amp-boilerplate>body{visibility:hidden}</style>
@@ -279,6 +283,6 @@ public class WebStoryServiceImpl implements WebStoryService {
                 categoryTitle,
                 storyContent.toString(),
                 metaTags.toString(),
-                HtmlUtils.htmlEscape(canonicalHref));
+                canonicalEscaped);
     }
 }
