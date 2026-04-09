@@ -8,12 +8,11 @@ import com.mypropertyfact.estate.repositories.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,10 +23,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Uploads nearby benefits (location benefits) from Excel for projects that do not yet have any.
+ * Uploads nearby benefits (location benefits) from Excel, keyed by project name in the Project column.
  * Excel structure: S.no, Project, School, Malls/ IT Park, Hospitals, Roads/ Highway,
  * Famous for/ Metro, Airport/Famous places.
  * Cell format: Place-Name_Distance-Km (e.g. GD-Goenka-International-School_7-Km).
+ * By default only projects with no existing location benefits are updated; use replaceExisting to
+ * replace all location benefits for each matched project from the sheet row.
  */
 @Service
 @Slf4j
@@ -49,7 +50,7 @@ public class ProjectNearbyBenefitsExcelService {
     private final LocationBenefitRepository locationBenefitRepository;
 
     @Transactional(rollbackFor = Exception.class)
-    public Response uploadNearbyBenefitsExcel(MultipartFile file) {
+    public Response uploadNearbyBenefitsExcel(MultipartFile file, boolean replaceExisting) {
         Response response = new Response();
         if (file == null || file.isEmpty()) {
             response.setIsSuccess(0);
@@ -69,7 +70,7 @@ public class ProjectNearbyBenefitsExcelService {
         int skippedHasBenefits = 0;
 
         try (InputStream is = file.getInputStream();
-             Workbook workbook = new XSSFWorkbook(is)) {
+             Workbook workbook = WorkbookFactory.create(is)) {
 
             Sheet sheet = workbook.getSheetAt(0);
             if (sheet == null || sheet.getPhysicalNumberOfRows() < 2) {
@@ -108,10 +109,13 @@ public class ProjectNearbyBenefitsExcelService {
                 Project project = projectOpt.get();
 
                 List<LocationBenefit> existing = locationBenefitRepository.findByProject(project);
-                if (!existing.isEmpty()) {
+                if (!existing.isEmpty() && !replaceExisting) {
                     log.debug("Project '{}' already has {} location benefits; skipping", projectName, existing.size());
                     skippedHasBenefits++;
                     continue;
+                }
+                if (!existing.isEmpty() && replaceExisting) {
+                    locationBenefitRepository.deleteByProject(project);
                 }
 
                 int benefitsAdded = 0;

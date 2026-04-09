@@ -50,14 +50,18 @@ public class ExcelUploadController {
     }
 
     /**
-     * Bulk update nearby benefits (location benefits) for projects that do not yet have any.
+     * Bulk update nearby benefits (location benefits) from Excel (project name in Project column).
      * Excel structure: S.no, Project, School, Malls/ IT Park, Hospitals, Roads/ Highway,
      * Famous for/ Metro, Airport/Famous places. Each benefit cell: Place-Name_Distance-Km
-     * (e.g. GD-Goenka-International-School_7-Km). Only projects with no existing location benefits are updated.
+     * (e.g. GD-Goenka-International-School_7-Km). By default only projects with no existing
+     * location benefits are updated; set replaceExisting=true to replace benefits from the sheet.
      */
     @PostMapping("/nearby-benefits")
     @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_NEARBY_BENEFITS')")
-    public ResponseEntity<Response> uploadNearbyBenefits(@RequestParam("file") MultipartFile file) {
-        return ResponseEntity.ok(projectNearbyBenefitsExcelService.uploadNearbyBenefitsExcel(file));
+    public ResponseEntity<Response> uploadNearbyBenefits(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "replaceExisting", defaultValue = "false") boolean replaceExisting) {
+        return ResponseEntity.ok(
+                projectNearbyBenefitsExcelService.uploadNearbyBenefitsExcel(file, replaceExisting));
     }
 }

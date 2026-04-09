@@ -19,6 +19,8 @@ public interface LocationBenefitRepository extends JpaRepository<LocationBenefit
 
     List<LocationBenefit> findByProject(Project project);
 
+    void deleteByProject(Project project);
+
     @Query("""
             SELECT new com.mypropertyfact.estate.dtos.LocationBenefitDto(
             lb.benefitName,
