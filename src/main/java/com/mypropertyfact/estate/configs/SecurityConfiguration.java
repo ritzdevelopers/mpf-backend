@@ -83,7 +83,9 @@ public class SecurityConfiguration {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(corsProperties.isAllowCredentials());
         List<String> origins = normalizeCorsList(corsProperties.getAllowedOrigins(),
-                "http://localhost:3000", "https://mypropertyfact.in");
+                "http://localhost:3000",
+                "https://mypropertyfact.in", "https://www.mypropertyfact.in",
+                "https://mypropertyfact.com", "https://www.mypropertyfact.com");
         config.setAllowedOriginPatterns(origins);
         log.info("Allowed Origins: {}", origins);
         config.setAllowedMethods(normalizeCorsList(corsProperties.getAllowedMethods(),
