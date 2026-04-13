@@ -7,6 +7,7 @@ import com.mypropertyfact.estate.repositories.EnqueryRepository;
 import com.mypropertyfact.estate.repositories.UserRepository;
 import com.mypropertyfact.estate.services.AdminDashboardActivityService;
 import com.mypropertyfact.estate.services.EnquiryAccessService;
+import com.mypropertyfact.estate.services.SiteTrafficService;
 import com.mypropertyfact.estate.services.UserRoleService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
@@ -40,6 +42,7 @@ public class AdminDashboardController {
     private final UserRoleService userRoleService;
     private final EnquiryAccessService enquiryAccessService;
     private final AdminDashboardActivityService adminDashboardActivityService;
+    private final SiteTrafficService siteTrafficService;
 
     /**
      * Counts for the admin dashboard. User total: Super Admins only.
@@ -121,5 +124,22 @@ public class AdminDashboardController {
         body.put("success", true);
         body.put("activities", items);
         return ResponseEntity.ok(body);
+    }
+
+    /**
+     * Aggregated public-site traffic by day for the dashboard chart (no visitor IPs).
+     * Available to Super Admins and Admins (same visibility as the chart card).
+     */
+    @GetMapping("/dashboard/site-traffic-trends")
+    public ResponseEntity<?> siteTrafficTrends(@RequestParam(defaultValue = "14") int days) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof User user)) {
+            return ResponseEntity.status(401).build();
+        }
+        if (!userRoleService.userHasRole(user.getId(), "SUPERADMIN")
+                && !userRoleService.userHasRole(user.getId(), "ADMIN")) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(siteTrafficService.buildDailyTrendForDashboard(days));
     }
 }

@@ -192,20 +192,24 @@ public class WebStoryServiceImpl implements WebStoryService {
             pageCount++;
         }
 
-        String canonicalBase = webStoryCanonicalBaseUrl == null ? "" : webStoryCanonicalBaseUrl.replaceAll("/+$", "");
+        String canonicalBase = webStoryCanonicalBaseUrl == null ? "" : webStoryCanonicalBaseUrl.trim().replaceAll("/+$", "");
+        if (canonicalBase.isBlank()) {
+            canonicalBase = "https://mypropertyfact.in";
+        }
         String canonicalHref = canonicalBase + "/stories/" + slug;
         String canonicalEscaped = HtmlUtils.htmlEscape(canonicalHref);
 
         return """
                     <!doctype html>
-                    <html lang="en-IN">
+                    <html lang="en-IN" xml:lang="en-IN" amp>
                     <head>
                       <meta charset="utf-8">
+                      <meta http-equiv="content-language" content="en-IN">
                       <title>%1$s</title>
-                      %3$s<link rel="canonical" href="%4$s" />
-                      <link rel="alternate" hreflang="en-IN" href="%4$s" />
-                      <link rel="alternate" hreflang="en" href="%4$s" />
-                      <link rel="alternate" hreflang="x-default" href="%4$s" />
+                      %3$s<link rel="canonical" href="%4$s">
+                      <link rel="alternate" hreflang="en-IN" href="%4$s">
+                      <link rel="alternate" hreflang="en" href="%4$s">
+                      <link rel="alternate" hreflang="x-default" href="%4$s">
                       <meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
                       <link rel="icon" href="https://mypropertyfact.in/favicon.ico" type="image/x-icon">
                       <style amp-boilerplate>body{visibility:hidden}</style>
@@ -271,8 +275,8 @@ public class WebStoryServiceImpl implements WebStoryService {
                               </style>
                 
                     </head>
-                    <body>
-                      <amp-story standalone title="%1$s" publisher="You"
+                    <body lang="en-IN">
+                      <amp-story standalone title="%1$s" publisher="You" lang="en-IN"
                         publisher-logo-src="https://mypropertyfact.in/logo.webp"
                         poster-portrait-src="https://mypropertyfact.in/logo.webp">
                         %2$s

@@ -4,10 +4,14 @@ import com.mypropertyfact.estate.dtos.WebStoryDto;
 import com.mypropertyfact.estate.interfaces.WebStoryService;
 import com.mypropertyfact.estate.models.Response;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/v1/web-story")
@@ -34,8 +38,16 @@ public class WebStoryController {
         return ResponseEntity.ok(webStoryService.deleteWebStory(id));
     }
 
-    @GetMapping(value = "/{slug}", produces = "text/html")
-    public String getWebStory(@PathVariable("slug") String slug) {
-        return webStoryService.webStory(slug);
+    /**
+     * Public AMP web story HTML. Sets charset and content-language so crawlers see
+     * {@code lang} / {@code hreflang} in the document together with correct HTTP headers.
+     */
+    @GetMapping(value = "/{slug}", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> getWebStory(@PathVariable("slug") String slug) {
+        String html = webStoryService.webStory(slug);
+        return ResponseEntity.ok()
+                .contentType(new MediaType(MediaType.TEXT_HTML, StandardCharsets.UTF_8))
+                .header(HttpHeaders.CONTENT_LANGUAGE, "en-IN")
+                .body(html);
     }
 }
