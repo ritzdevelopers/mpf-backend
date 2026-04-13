@@ -142,4 +142,35 @@ public class AdminDashboardController {
         }
         return ResponseEntity.ok(siteTrafficService.buildDailyTrendForDashboard(days));
     }
+
+    /**
+     * Per-minute public-site traffic for the last N minutes (super admins only). Used for live
+     * dashboard charts without full page refresh.
+     */
+    @GetMapping("/dashboard/site-traffic-live")
+    public ResponseEntity<?> siteTrafficLive(@RequestParam(defaultValue = "60") int minutes) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof User user)) {
+            return ResponseEntity.status(401).build();
+        }
+        if (!userRoleService.userHasRole(user.getId(), "SUPERADMIN")) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(siteTrafficService.buildLiveSeries(minutes));
+    }
+
+    /**
+     * Today's traffic by clock hour (24h, resets at midnight server time). Super admins only.
+     */
+    @GetMapping("/dashboard/site-traffic-today")
+    public ResponseEntity<?> siteTrafficToday() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof User user)) {
+            return ResponseEntity.status(401).build();
+        }
+        if (!userRoleService.userHasRole(user.getId(), "SUPERADMIN")) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(siteTrafficService.buildTodayHourlyDashboard());
+    }
 }

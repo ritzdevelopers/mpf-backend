@@ -26,6 +26,12 @@ public final class AdminApiTaskDescriber {
         if (path.contains("/dashboard/site-traffic-trends")) {
             return "View website traffic trend chart";
         }
+        if (path.contains("/dashboard/site-traffic-live")) {
+            return "View live website traffic chart";
+        }
+        if (path.contains("/dashboard/site-traffic-today")) {
+            return "View today 24h website traffic";
+        }
         if (path.contains("/api/v1/admin/property-listings")) {
             if (HttpMethod.POST.matches(method)) {
                 return "Submit or update property listing (admin)";

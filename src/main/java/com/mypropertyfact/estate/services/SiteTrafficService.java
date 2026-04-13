@@ -2,7 +2,11 @@ package com.mypropertyfact.estate.services;
 
 import com.mypropertyfact.estate.dtos.SiteTrafficDailyBucketDto;
 import com.mypropertyfact.estate.dtos.SiteTrafficDailyTrendResponse;
+import com.mypropertyfact.estate.dtos.SiteTrafficHourBucketDto;
+import com.mypropertyfact.estate.dtos.SiteTrafficLiveBucketDto;
+import com.mypropertyfact.estate.dtos.SiteTrafficLiveSeriesResponse;
 import com.mypropertyfact.estate.dtos.SiteTrafficPathCountDto;
+import com.mypropertyfact.estate.dtos.SiteTrafficTodayResponse;
 import com.mypropertyfact.estate.dtos.SiteTrafficSummaryResponse;
 import com.mypropertyfact.estate.dtos.SiteTrafficVisitDto;
 import com.mypropertyfact.estate.dtos.SiteTrafficVisitPageResponse;
@@ -16,11 +20,16 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -36,6 +45,10 @@ public class SiteTrafficService {
     private static final long MAX_DWELL_MS = 86_400_000L;
     /** Drop only very short positive segments (noise); 0ms completed navigations are still stored. */
     private static final int MIN_DWELL_TO_PERSIST_MS = 50;
+    private static final int PING_DEDUPE_LOOKBACK_MINUTES = 20;
+    private static final DateTimeFormatter SQL_MINUTE_BUCKET = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter LIVE_CHART_LABEL = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter TODAY_HOUR_LABEL = DateTimeFormatter.ofPattern("HH:00");
 
     private final SiteTrafficEventRepository siteTrafficEventRepository;
 
@@ -78,6 +91,10 @@ public class SiteTrafficService {
             long capped = Math.min(Math.max(dwellMs, 0), MAX_DWELL_MS);
             if (capped > 0 && capped < MIN_DWELL_TO_PERSIST_MS) {
                 return;
+            }
+            if (!sessionPart.isEmpty()) {
+                LocalDateTime pingCutoff = LocalDateTime.now().minusMinutes(PING_DEDUPE_LOOKBACK_MINUTES);
+                siteTrafficEventRepository.deletePingsForSessionPathSince(sessionPart, path, pingCutoff);
             }
             SiteTrafficEvent e = new SiteTrafficEvent();
             e.setPath(path);
@@ -230,6 +247,150 @@ public class SiteTrafficService {
                 .visitsLast24Hours(c24)
                 .topPathsLast24Hours(top)
                 .build();
+    }
+
+    /**
+     * Per-minute counts for the last N minutes (MySQL). Missing minutes are returned with count 0
+     * so the client can plot a stable time axis.
+     */
+    @Transactional(readOnly = true)
+    public SiteTrafficLiveSeriesResponse buildLiveSeries(int requestedWindowMinutes) {
+        int window = Math.min(Math.max(requestedWindowMinutes, 15), 120);
+        LocalDateTime endBucket = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
+        LocalDateTime startBucket = endBucket.minusMinutes(window - 1L);
+
+        List<Object[]> raw = siteTrafficEventRepository.countGroupedBySqlMinute(startBucket);
+        Map<LocalDateTime, Long> counts = new HashMap<>();
+        if (raw != null) {
+            for (Object[] row : raw) {
+                if (row == null || row.length < 2) {
+                    continue;
+                }
+                LocalDateTime key = parseSqlMinuteBucketKey(row[0]);
+                if (key == null) {
+                    continue;
+                }
+                long cnt = row[1] instanceof Number ? ((Number) row[1]).longValue() : 0L;
+                counts.merge(key, cnt, Long::sum);
+            }
+        }
+
+        List<SiteTrafficLiveBucketDto> buckets = new ArrayList<>(window);
+        for (int i = 0; i < window; i++) {
+            LocalDateTime t = startBucket.plusMinutes(i);
+            long c = counts.getOrDefault(t, 0L);
+            buckets.add(SiteTrafficLiveBucketDto.builder()
+                    .minuteStart(t.toString())
+                    .label(t.format(LIVE_CHART_LABEL))
+                    .count(c)
+                    .build());
+        }
+
+        SiteTrafficSummaryResponse snap = buildSummary();
+        return SiteTrafficLiveSeriesResponse.builder()
+                .buckets(buckets)
+                .windowMinutes(window)
+                .visitsLast15Minutes(snap.getVisitsLast15Minutes())
+                .visitsLast1Hour(snap.getVisitsLast1Hour())
+                .generatedAt(LocalDateTime.now().toString())
+                .build();
+    }
+
+    /**
+     * Calendar-day traffic: 24 hourly buckets for "today" in the JVM default zone. Counts reset
+     * at each new calendar day. Includes percentage comparisons vs yesterday.
+     */
+    @Transactional(readOnly = true)
+    public SiteTrafficTodayResponse buildTodayHourlyDashboard() {
+        ZoneId zone = ZoneId.systemDefault();
+        LocalDate today = LocalDate.now(zone);
+        LocalDateTime now = LocalDateTime.now(zone);
+        LocalDateTime todayStart = today.atStartOfDay();
+        LocalDateTime todayEnd = today.plusDays(1).atStartOfDay();
+
+        LocalDate yesterday = today.minusDays(1);
+        LocalDateTime yesterdayStart = yesterday.atStartOfDay();
+        LocalDateTime yesterdayEnd = yesterday.plusDays(1).atStartOfDay();
+        LocalDateTime sameClockYesterday = now.minusDays(1);
+
+        List<Object[]> rawHours =
+                siteTrafficEventRepository.countGroupedBySqlHour(todayStart, todayEnd);
+        Map<Integer, Long> byHour = new HashMap<>();
+        if (rawHours != null) {
+            for (Object[] row : rawHours) {
+                if (row == null || row.length < 2 || row[0] == null) {
+                    continue;
+                }
+                int h = ((Number) row[0]).intValue();
+                long cnt = row[1] instanceof Number ? ((Number) row[1]).longValue() : 0L;
+                byHour.put(h, cnt);
+            }
+        }
+
+        List<SiteTrafficHourBucketDto> buckets = new ArrayList<>(24);
+        for (int h = 0; h < 24; h++) {
+            LocalDateTime t = today.atTime(h, 0);
+            buckets.add(SiteTrafficHourBucketDto.builder()
+                    .hour(h)
+                    .label(t.format(TODAY_HOUR_LABEL))
+                    .count(byHour.getOrDefault(h, 0L))
+                    .build());
+        }
+
+        LocalDateTime nowCap = now.isAfter(todayEnd) ? todayEnd : now;
+        long todayTotalSoFar = siteTrafficEventRepository.countByOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+                todayStart, nowCap);
+        long yesterdayFullDayTotal = siteTrafficEventRepository.countByOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+                yesterdayStart, yesterdayEnd);
+        LocalDateTime yWindowEnd = sameClockYesterday.isBefore(yesterdayEnd) ? sameClockYesterday : yesterdayEnd;
+        long yesterdaySameWindowTotal = siteTrafficEventRepository.countByOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+                yesterdayStart, yWindowEnd);
+
+        Double pctSame = null;
+        if (yesterdaySameWindowTotal > 0) {
+            pctSame = (todayTotalSoFar - yesterdaySameWindowTotal) / (double) yesterdaySameWindowTotal * 100.0;
+        }
+        Double pctOfFull = null;
+        if (yesterdayFullDayTotal > 0) {
+            pctOfFull = todayTotalSoFar / (double) yesterdayFullDayTotal * 100.0;
+        }
+
+        return SiteTrafficTodayResponse.builder()
+                .hourlyBuckets(buckets)
+                .calendarDate(today.toString())
+                .zoneId(zone.getId())
+                .todayTotalSoFar(todayTotalSoFar)
+                .yesterdayFullDayTotal(yesterdayFullDayTotal)
+                .yesterdaySameWindowTotal(yesterdaySameWindowTotal)
+                .percentChangeVsYesterdaySameWindow(pctSame)
+                .todaySoFarPercentOfYesterdayFullDay(pctOfFull)
+                .generatedAt(now.toString())
+                .build();
+    }
+
+    private static LocalDateTime parseSqlMinuteBucketKey(Object cell) {
+        if (cell == null) {
+            return null;
+        }
+        if (cell instanceof Timestamp ts) {
+            return ts.toLocalDateTime().truncatedTo(ChronoUnit.MINUTES);
+        }
+        if (cell instanceof LocalDateTime ldt) {
+            return ldt.truncatedTo(ChronoUnit.MINUTES);
+        }
+        String s = String.valueOf(cell).trim();
+        if (s.isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(s, SQL_MINUTE_BUCKET);
+        } catch (Exception e) {
+            try {
+                return LocalDateTime.parse(s);
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
     }
 
     private static String resolveClientIp(HttpServletRequest request) {
