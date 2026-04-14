@@ -32,6 +32,98 @@ public final class AdminApiTaskDescriber {
         if (path.contains("/dashboard/site-traffic-today")) {
             return "View today 24h website traffic";
         }
+        if (path.contains("/api/v1/blog-category")) {
+            if (path.contains("/add-update") && HttpMethod.POST.matches(method)) {
+                return "Create or update blog category";
+            }
+            if (path.contains("/delete/") && HttpMethod.DELETE.matches(method)) {
+                return "Delete blog category";
+            }
+            if (path.contains("/get-all")) {
+                return "List blog categories";
+            }
+            if (path.contains("/get/")) {
+                return "Open blog category";
+            }
+            return "Blog category API";
+        }
+        if (path.contains("/api/v1/blog")) {
+            if (path.contains("/add-update") && HttpMethod.POST.matches(method)) {
+                return "Create or update blog post";
+            }
+            if (path.matches("/api/v1/blog/\\d+")) {
+                if (HttpMethod.DELETE.matches(method)) {
+                    return "Delete blog post";
+                }
+                if (HttpMethod.GET.matches(method)) {
+                    return "Open blog post by id";
+                }
+            }
+            if (path.contains("/get-all")) {
+                return "List blog posts";
+            }
+            if (path.contains("/get/")) {
+                return "Load blog post by slug";
+            }
+            if (path.equals("/api/v1/blog/get")) {
+                return "List or search blog posts (paginated)";
+            }
+            return "Blog API";
+        }
+        if (path.contains("/api/v1/web-story-category")) {
+            if (path.contains("/add-update") && HttpMethod.POST.matches(method)) {
+                return "Create or update web story category";
+            }
+            if (path.contains("/delete/") && HttpMethod.DELETE.matches(method)) {
+                return "Delete web story category";
+            }
+            if (path.contains("/get-all")) {
+                return "List web story categories";
+            }
+            return "Web story category API";
+        }
+        if (path.contains("/api/v1/web-story")) {
+            if (path.contains("/add-update") && HttpMethod.POST.matches(method)) {
+                return "Create or update web story";
+            }
+            if (path.contains("/delete/") && HttpMethod.DELETE.matches(method)) {
+                return "Delete web story";
+            }
+            if (path.contains("/get-all")) {
+                return "List web stories";
+            }
+            if (HttpMethod.GET.matches(method) && path.matches("/api/v1/web-story/[^/]+")) {
+                return "View web story page (HTML)";
+            }
+            return "Web story API";
+        }
+        if (path.contains("/api/v1/projects")) {
+            if (path.contains("/add-new") && HttpMethod.POST.matches(method)) {
+                return "Create or update project";
+            }
+            if (path.contains("/delete/") && HttpMethod.DELETE.matches(method)) {
+                return "Delete project";
+            }
+            if (path.contains("/admin-export")) {
+                return "Export projects for admin / Excel";
+            }
+            if (path.contains("/get/") && HttpMethod.GET.matches(method)) {
+                return "Load project details by slug";
+            }
+            if (path.equals("/api/v1/projects")) {
+                return "List projects (summary)";
+            }
+            if (path.contains("/add-update-amenity")) {
+                return "Create or update project amenity";
+            }
+            if (path.contains("/search-by-type-city-budget")) {
+                return "Search projects by filters";
+            }
+            return "Project API";
+        }
+        if (path.contains("/api/v1/excel-upload")) {
+            return "Excel bulk upload (projects or data)";
+        }
         if (path.contains("/api/v1/admin/property-listings")) {
             if (HttpMethod.POST.matches(method)) {
                 return "Submit or update property listing (admin)";

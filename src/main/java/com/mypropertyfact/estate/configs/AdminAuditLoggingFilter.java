@@ -32,7 +32,21 @@ public class AdminAuditLoggingFilter extends OncePerRequestFilter {
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
-        if (!isAdminApiPath(request) || HttpMethod.OPTIONS.matches(request.getMethod())) {
+        if (HttpMethod.OPTIONS.matches(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String pathOnly = normalizedPath(request);
+        if (!pathOnly.startsWith("/api/v1/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        boolean adminApi = pathOnly.startsWith(ADMIN_API_PREFIX);
+        boolean portalShellAudit = !adminApi && hasNonBlankClientAdminPage(request);
+
+        if (!adminApi && !portalShellAudit) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -43,7 +57,17 @@ public class AdminAuditLoggingFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (shouldSkipAudit(request)) {
+        if (portalShellAudit && !isStaffDashboardUser(user)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (adminApi && shouldSkipAdminApiAudit(pathOnly, request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (portalShellAudit && shouldSkipPortalShellAudit(pathOnly)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -55,7 +79,6 @@ public class AdminAuditLoggingFilter extends OncePerRequestFilter {
             try {
                 int status = response.getStatus();
                 long durationMs = (System.nanoTime() - start) / 1_000_000L;
-                String pathOnly = stripContextPath(request.getRequestURI(), request.getContextPath());
                 String query = request.getQueryString();
                 if (query != null && query.isEmpty()) {
                     query = null;
@@ -83,23 +106,30 @@ public class AdminAuditLoggingFilter extends OncePerRequestFilter {
         }
     }
 
-    private static boolean isAdminApiPath(HttpServletRequest request) {
+    private static String normalizedPath(HttpServletRequest request) {
         String path = stripContextPath(request.getRequestURI(), request.getContextPath());
         int q = path.indexOf('?');
         if (q >= 0) {
             path = path.substring(0, q);
         }
-        return path.startsWith(ADMIN_API_PREFIX);
+        return path;
     }
 
-    private static boolean shouldSkipAudit(HttpServletRequest request) {
-        if (!HttpMethod.GET.matches(request.getMethod())) {
+    private static boolean hasNonBlankClientAdminPage(HttpServletRequest request) {
+        String raw = request.getHeader(HEADER_ADMIN_PAGE);
+        return raw != null && !raw.trim().isEmpty();
+    }
+
+    private static boolean isStaffDashboardUser(User user) {
+        return user.getAuthorities().stream().anyMatch(a -> {
+            String g = a.getAuthority();
+            return "ROLE_ADMIN".equals(g) || "ROLE_SUPERADMIN".equals(g);
+        });
+    }
+
+    private static boolean shouldSkipAdminApiAudit(String path, String method) {
+        if (!HttpMethod.GET.matches(method)) {
             return false;
-        }
-        String path = stripContextPath(request.getRequestURI(), request.getContextPath());
-        int q = path.indexOf('?');
-        if (q >= 0) {
-            path = path.substring(0, q);
         }
         return path.startsWith("/api/v1/admin/super/traffic/summary")
                 || path.startsWith("/api/v1/admin/super/traffic/visits")
@@ -108,6 +138,14 @@ public class AdminAuditLoggingFilter extends OncePerRequestFilter {
                 || path.startsWith("/api/v1/admin/dashboard/site-traffic-trends")
                 || path.startsWith("/api/v1/admin/dashboard/site-traffic-live")
                 || path.startsWith("/api/v1/admin/dashboard/site-traffic-today");
+    }
+
+    /**
+     * High-volume or binary endpoints when the request is only tagged via the admin-shell headers.
+     */
+    private static boolean shouldSkipPortalShellAudit(String path) {
+        return path.startsWith("/api/v1/get/")
+                || path.startsWith("/api/v1/public/");
     }
 
     private static String stripContextPath(String uri, String contextPath) {
