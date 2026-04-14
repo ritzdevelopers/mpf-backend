@@ -4,6 +4,8 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
+import com.mypropertyfact.estate.dtos.AdminPasswordResetEmailCheckRequest;
+import com.mypropertyfact.estate.dtos.AdminPasswordResetSubmitRequest;
 import com.mypropertyfact.estate.dtos.AdminPortalRegisterRequest;
 import com.mypropertyfact.estate.dtos.LoginResponse;
 import com.mypropertyfact.estate.dtos.LoginUserDto;
@@ -14,6 +16,7 @@ import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.repositories.MasterRoleRepository;
 import com.mypropertyfact.estate.repositories.UserRepository;
 import com.mypropertyfact.estate.services.AdminPermissionService;
+import com.mypropertyfact.estate.services.AdminPasswordResetRequestService;
 import com.mypropertyfact.estate.services.AuthenticationService;
 import com.mypropertyfact.estate.services.EnquiryAccessService;
 import com.mypropertyfact.estate.security.AdminPermissionKeys;
@@ -67,6 +70,7 @@ public class AuthenticationController {
     private final SendEmailHandler sendEmailHandler;
     private final AdminPermissionService adminPermissionService;
     private final EnquiryAccessService enquiryAccessService;
+    private final AdminPasswordResetRequestService adminPasswordResetRequestService;
 
     @Value("${cookies.domain:}")
     private String cookiesDomain;
@@ -116,6 +120,35 @@ public class AuthenticationController {
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("message", ex.getMessage()));
+        }
+    }
+
+    /**
+     * Forgot-password step 1: verify the email exists and is eligible for admin password reset.
+     */
+    @PostMapping("/admin-password-reset-check-email")
+    public ResponseEntity<?> checkAdminPasswordResetEmail(
+            @Valid @RequestBody AdminPasswordResetEmailCheckRequest body) {
+        try {
+            adminPasswordResetRequestService.checkEmailEligibleForPasswordReset(body.getEmail());
+            return ResponseEntity.ok(Map.of("ok", true));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", ex.getMessage()));
+        }
+    }
+
+    /**
+     * Admin dashboard forgot-password: stores a bcrypt hash for super-admin review (no plaintext persisted).
+     */
+    @PostMapping("/admin-password-reset-request")
+    public ResponseEntity<?> requestAdminPasswordReset(@Valid @RequestBody AdminPasswordResetSubmitRequest body) {
+        try {
+            adminPasswordResetRequestService.submitRequest(body);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Request recorded. A Super Administrator will review your new password."));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", ex.getMessage()));
         }
     }
 

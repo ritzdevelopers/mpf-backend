@@ -1,7 +1,11 @@
 package com.mypropertyfact.estate.controllers;
 
 import com.mypropertyfact.estate.dtos.AdminSetPasswordRequest;
+import com.mypropertyfact.estate.dtos.PendingPermissionsCountResponse;
+import com.mypropertyfact.estate.dtos.PendingPermissionsResponse;
+import com.mypropertyfact.estate.dtos.SuperAdminPasswordResetDecisionRequest;
 import com.mypropertyfact.estate.entities.User;
+import com.mypropertyfact.estate.services.AdminPasswordResetRequestService;
 import com.mypropertyfact.estate.services.UserService;
 import com.mypropertyfact.estate.services.UserRoleService;
 
@@ -28,6 +32,7 @@ public class UserController {
     private final UserService userService;
     private final UserRepository userRepository;
     private final UserRoleService userRoleService;
+    private final AdminPasswordResetRequestService adminPasswordResetRequestService;
 
     @GetMapping("/me")
     public ResponseEntity<User> authenticatedUser() {
@@ -100,10 +105,43 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
-    @GetMapping("/pending-admin-approvals")
+    @GetMapping("/pending-permissions")
     @PreAuthorize("hasRole('SUPERADMIN')")
-    public ResponseEntity<List<User>> pendingAdminApprovals() {
-        return ResponseEntity.ok(userService.findPendingAdminStaffApprovals());
+    public ResponseEntity<PendingPermissionsResponse> pendingPermissions() {
+        return ResponseEntity.ok(adminPasswordResetRequestService.buildPendingPermissions());
+    }
+
+    @GetMapping("/pending-permissions-count")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<PendingPermissionsCountResponse> pendingPermissionsCount() {
+        return ResponseEntity.ok(adminPasswordResetRequestService.countPending());
+    }
+
+    @PutMapping("/password-reset-requests/{id}/approve")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<?> approvePasswordReset(
+            @PathVariable Long id,
+            @RequestBody(required = false) SuperAdminPasswordResetDecisionRequest body) {
+        try {
+            String edited = body != null && body.getEditedPassword() != null ? body.getEditedPassword().trim() : "";
+            var user = adminPasswordResetRequestService.approve(
+                    id,
+                    edited.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(edited));
+            return ResponseEntity.ok(Map.of("message", "Password updated.", "userId", user.getId()));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", ex.getMessage()));
+        }
+    }
+
+    @PutMapping("/password-reset-requests/{id}/reject")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<?> rejectPasswordReset(@PathVariable Long id) {
+        try {
+            adminPasswordResetRequestService.reject(id);
+            return ResponseEntity.ok(Map.of("message", "Password reset request rejected."));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", ex.getMessage()));
+        }
     }
 
     @PutMapping("/{id}/approve-admin-staff")
