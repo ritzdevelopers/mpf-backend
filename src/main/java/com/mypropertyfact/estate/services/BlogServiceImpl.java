@@ -94,6 +94,7 @@ public class BlogServiceImpl implements BlogService {
             }
             existing.setStatus(blogDto.getStatus());
             existing.setBlogKeywords(blogDto.getBlogKeywords());
+            existing.setAuthorName(blogDto.getAuthorName());
             blogCategory.ifPresent(existing::setBlogCategory);
             city.ifPresent(existing::setCity);
             existing.setBlogMetaDescription(blogDto.getBlogMetaDescription());
@@ -120,6 +121,7 @@ public class BlogServiceImpl implements BlogService {
         blog.setSlugUrl(blogDto.getSlugUrl());
         blog.setStatus(blogDto.getStatus());
         blog.setBlogKeywords(blogDto.getBlogKeywords());
+        blog.setAuthorName(blogDto.getAuthorName());
         blog.setBlogMetaDescription(blogDto.getBlogMetaDescription());
         blog.setBlogImage(blogImageName);
         blogRepository.save(blog);
@@ -149,6 +151,7 @@ public class BlogServiceImpl implements BlogService {
                         blog.getBlogDescription(),
                         blog.getSlugUrl(),
                         blog.getBlogImage(),
+                        blog.getAuthorName(),
                         blog.getBlogCategory() != null ? blog.getBlogCategory().getCategoryName(): null,
                         blog.getStatus(),
                         blog.getBlogCategory() != null ?blog.getBlogCategory().getId() : 0,
@@ -168,6 +171,7 @@ public class BlogServiceImpl implements BlogService {
                 bySlugUrl.getBlogDescription(),
                 bySlugUrl.getSlugUrl(),
                 bySlugUrl.getBlogImage(),
+                bySlugUrl.getAuthorName(),
                 bySlugUrl.getBlogCategory() != null ? bySlugUrl.getBlogCategory().getCategoryName(): null,
                 bySlugUrl.getStatus(),
                 bySlugUrl.getBlogCategory() != null ? bySlugUrl.getBlogCategory().getId(): 0,
@@ -194,6 +198,7 @@ public class BlogServiceImpl implements BlogService {
             blogDto.setCreatedAt(blog.getCreatedAt());
             blogDto.setBlogTitle(blog.getBlogTitle());
             blogDto.setBlogMetaDescription(blog.getBlogMetaDescription());
+            blogDto.setAuthorName(blog.getAuthorName());
             return blogDto;
         }).toList();
 

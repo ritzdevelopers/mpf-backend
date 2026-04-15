@@ -41,6 +41,10 @@ public class Blog {
     @Column(name = "blog_image")
     private String blogImage;
 
+    @Size(max = 120, message = "Author name must not exceed 120 characters")
+    @Column(name = "author_name")
+    private String authorName;
+
     @Min(value = 0, message = "Status must be at least 0")
     @Max(value = 1, message = "Status must be at most 1")
     @Column(name = "status")
