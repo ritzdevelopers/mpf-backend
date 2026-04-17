@@ -99,7 +99,7 @@ public final class AdminApiTaskDescriber {
         }
         if (path.contains("/api/v1/projects")) {
             if (path.contains("/add-new") && HttpMethod.POST.matches(method)) {
-                return "Create or update project";
+                return "Create or update project"; 
             }
             if (path.contains("/delete/") && HttpMethod.DELETE.matches(method)) {
                 return "Delete project";
