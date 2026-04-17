@@ -23,7 +23,7 @@ public class EnquiryService {
 
     private final EnqueryRepository enqueryRepository;
 
-    private final SendEmailHandler sendEmailHandler;
+    private final SendEmailHandler sendEmailHandler; 
 
     private final UserRepository userRepository;
 
