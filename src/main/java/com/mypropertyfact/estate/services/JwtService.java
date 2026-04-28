@@ -25,6 +25,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.nio.charset.StandardCharsets;
+import java.net.URLEncoder;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -45,6 +47,10 @@ public class JwtService {
 
     @Value("${security.jwt.enquiry-unlock-expiration-ms:28800000}")
     private long enquiryUnlockExpirationMs;
+
+    /** Forgot-password link validity (milliseconds). Default 15 minutes. */
+    @Value("${app.auth.password-reset-token-ms:900000}")
+    private long passwordResetTokenMs;
 
     private final UserRepository userRepository;
     private final UserRoleService userRoleService;
@@ -282,5 +288,62 @@ public class JwtService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /** Payload validated from a forgot-password JWT (purpose {@code PASSWORD_RESET}). */
+    public record PasswordResetTokenPayload(String email, int tokenVersion) {}
+
+    public String generatePasswordResetToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("purpose", "PASSWORD_RESET");
+        claims.put("tv", user.getTokenVersion() != null ? user.getTokenVersion() : 0);
+        return Jwts
+                .builder()
+                .setClaims(claims)
+                .setSubject(user.getEmail())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + passwordResetTokenMs))
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    /**
+     * Parses a password-reset JWT: correct purpose, not expired, subject present.
+     */
+    public Optional<PasswordResetTokenPayload> parsePasswordResetToken(String token) {
+        if (token == null || token.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            Claims claims = extractAllClaims(token);
+            if (!"PASSWORD_RESET".equals(claims.get("purpose"))) {
+                return Optional.empty();
+            }
+            if (isTokenExpired(token)) {
+                return Optional.empty();
+            }
+            String email = claims.getSubject();
+            if (email == null || email.isBlank()) {
+                return Optional.empty();
+            }
+            Object tv = claims.get("tv");
+            int v = tv instanceof Number ? ((Number) tv).intValue() : 0;
+            return Optional.of(new PasswordResetTokenPayload(email.trim(), v));
+        } catch (Exception e) {
+            log.debug("Invalid password reset token: {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Builds a front-end reset URL; {@code baseUrl} should be the site origin (no trailing slash).
+     */
+    public static String buildPasswordResetLink(String baseUrl, String resetJwt) {
+        String base = baseUrl != null ? baseUrl.trim() : "";
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        String enc = URLEncoder.encode(resetJwt, StandardCharsets.UTF_8);
+        return base + "/reset-password?token=" + enc;
     }
 }

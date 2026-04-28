@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -32,9 +33,15 @@ public class AuthenticationService {
     private final MasterRoleRepository masterRoleRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
+    private final SendEmailHandler sendEmailHandler;
 
     @Value("${app.admin.registration-pin:}")
     private String adminRegistrationPin;
+
+    /** Consumer site / app shell origin for links in forgot-password emails (no trailing slash). */
+    @Value("${app.auth.password-reset-frontend-base-url:https://mypropertyfact.in}")
+    private String passwordResetFrontendBaseUrl;
 
     @Transactional
     public User signup(RegisterUserDto input) {
@@ -42,7 +49,12 @@ public class AuthenticationService {
         if (input.getEmail() != null && userRepository.findByEmail(input.getEmail()).isPresent()) {
             throw new IllegalArgumentException("An account with this email address already exists. Please use a different email or try logging in instead.");
         }
-        
+        if (input.getPhone() != null && !input.getPhone().isBlank()
+                && userRepository.findByPhone(input.getPhone().trim()).isPresent()) {
+            throw new IllegalArgumentException(
+                    "An account with this phone number already exists. Please sign in or use a different number.");
+        }
+
         User user = new User();
         // Ensure fullName is not null - use email or default value if not provided
         String fullName = (input.getFullName() != null && !input.getFullName().trim().isEmpty()) 
@@ -50,6 +62,9 @@ public class AuthenticationService {
                 : (input.getEmail() != null ? input.getEmail().split("@")[0] : "User");
         user.setFullName(fullName);
         user.setEmail(input.getEmail());
+        if (input.getPhone() != null && !input.getPhone().trim().isEmpty()) {
+            user.setPhone(input.getPhone().trim());
+        }
         user.setPassword(passwordEncoder.encode(input.getPassword()));
         user.setEnabled(true);
 
@@ -314,5 +329,85 @@ public class AuthenticationService {
                             userRole.setIsActive(true);
                             roles.add(masterRoleRepository.save(userRole));
                         });
+    }
+
+    /**
+     * Sends a reset link when the email belongs to an account (same generic outcome when missing — no enumeration).
+     */
+    public void sendConsumerPasswordResetEmail(String rawEmail) {
+        if (rawEmail == null || rawEmail.isBlank()) {
+            return;
+        }
+        String email = rawEmail.trim();
+        Optional<User> opt = userRepository.findByEmailIgnoreCase(email);
+        if (opt.isEmpty()) {
+            return;
+        }
+        User user = opt.get();
+        String accountEmail = user.getEmail();
+        if (accountEmail == null || accountEmail.isBlank()) {
+            return;
+        }
+
+        String resetJwt = jwtService.generatePasswordResetToken(user);
+        String resetUrl = JwtService.buildPasswordResetLink(passwordResetFrontendBaseUrl, resetJwt);
+
+        String body = """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                <style>
+                body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+                .container { max-width: 600px; background: #ffffff; padding: 20px; border-radius: 8px;
+                  box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+                .header { font-size: 20px; font-weight: bold; color: #2c3e50; margin-bottom: 12px; }
+                .message { font-size: 14px; color: #555; line-height: 1.6; }
+                .button {
+                  display: inline-block; margin: 18px 0; padding: 12px 20px;
+                  background: #2563eb; color: #fff !important; text-decoration: none; border-radius: 6px; font-weight: bold;
+                }
+                .footer { margin-top: 20px; font-size: 13px; color: #777; }
+                </style>
+                </head>
+                <body>
+                <div class="container">
+                <div class="header">Reset your password</div>
+                <p class="message">
+                Hello,<br><br>
+                We received a request to reset the password for your My Property Fact account.
+                Click the button below to choose a new password. This link will expire shortly.
+                </p>
+                <p><a class="button" href="%s">Reset password</a></p>
+                <p class="message">
+                If you did not request this, you can safely ignore this email.
+                </p>
+                <div class="footer">Regards,<br><strong>My Property Fact Team</strong></div>
+                </div>
+                </body>
+                </html>
+                """.formatted(resetUrl);
+        sendEmailHandler.sendEmail(accountEmail, "Reset your My Property Fact password", body);
+    }
+
+    @Transactional
+    public void resetPasswordWithConsumerToken(String token, String newPassword) {
+        JwtService.PasswordResetTokenPayload payload = jwtService.parsePasswordResetToken(token)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Invalid or expired reset link. Please request a new password reset."));
+
+        User user = userRepository.findByEmailIgnoreCase(payload.email())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Invalid or expired reset link. Please request a new password reset."));
+
+        int expectedTv = payload.tokenVersion();
+        int currentTv = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
+        if (expectedTv != currentTv) {
+            throw new IllegalArgumentException(
+                    "This reset link is no longer valid. Please request a new password reset.");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword.trim()));
+        user.setTokenVersion(currentTv + 1);
+        userRepository.save(user);
     }
 }

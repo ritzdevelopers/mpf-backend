@@ -7,9 +7,11 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.mypropertyfact.estate.dtos.AdminPasswordResetEmailCheckRequest;
 import com.mypropertyfact.estate.dtos.AdminPasswordResetSubmitRequest;
 import com.mypropertyfact.estate.dtos.AdminPortalRegisterRequest;
+import com.mypropertyfact.estate.dtos.ForgotPasswordRequest;
 import com.mypropertyfact.estate.dtos.LoginResponse;
 import com.mypropertyfact.estate.dtos.LoginUserDto;
 import com.mypropertyfact.estate.dtos.RegisterUserDto;
+import com.mypropertyfact.estate.dtos.ResetPasswordRequest;
 import com.mypropertyfact.estate.dtos.TokenRequest;
 import com.mypropertyfact.estate.entities.MasterRole;
 import com.mypropertyfact.estate.entities.User;
@@ -84,10 +86,46 @@ public class AuthenticationController {
     private long refreshTokenExpiration;
 
     @PostMapping("/signup")
-    public ResponseEntity<User> register(@RequestBody RegisterUserDto registerUserDto) {
-        User registeredUser = authenticationService.signup(registerUserDto);
+    public ResponseEntity<?> register(@RequestBody RegisterUserDto registerUserDto,
+            HttpServletResponse response) {
+        final User registeredUser;
+        try {
+            registeredUser = authenticationService.signup(registerUserDto);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", ex.getMessage()));
+        }
 
-        return ResponseEntity.ok(registeredUser);
+        String jwtToken = jwtService.generateToken(registeredUser);
+        String refreshToken = jwtService.generateRefreshToken(registeredUser);
+        response.addHeader("Set-Cookie",
+                buildAuthCookie("token", jwtToken, accessTokenExpiration / 1000).toString());
+        response.addHeader("Set-Cookie",
+                buildAuthCookie("refreshToken", refreshToken, refreshTokenExpiration / 1000).toString());
+
+        LoginResponse loginResponse = new LoginResponse();
+        loginResponse.setToken(jwtToken);
+        loginResponse.setRefreshToken(refreshToken);
+        loginResponse.setExpiresIn(jwtService.getExpirationTime());
+        loginResponse.setUser(registeredUser);
+        return ResponseEntity.ok(loginResponse);
+    }
+
+    /** Consumer/mobile: request password reset email (always 200 {@code ok: true} to avoid email enumeration). */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Map<String, Object>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest body) {
+        authenticationService.sendConsumerPasswordResetEmail(body.getEmail());
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    /** Consumer/mobile: submit token from reset link and set a new password. */
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest body) {
+        try {
+            authenticationService.resetPasswordWithConsumerToken(body.getToken(), body.getNewPassword());
+            return ResponseEntity.ok(Map.of("ok", true));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        }
     }
 
     /** Role list + whether PIN is required (see {@code app.admin.registration-pin}). */
@@ -168,10 +206,9 @@ public class AuthenticationController {
         response.addHeader("Set-Cookie",
                 buildAuthCookie("refreshToken", refreshToken, refreshTokenExpiration / 1000).toString());
         LoginResponse loginResponse = new LoginResponse();
-        log.info("Response is {}", response);
-        // loginResponse.setToken(jwtToken);
-        // loginResponse.setRefreshToken(refreshToken);
-        // loginResponse.setExpiresIn(jwtService.getExpirationTime());
+        loginResponse.setToken(jwtToken);
+        loginResponse.setRefreshToken(refreshToken);
+        loginResponse.setExpiresIn(jwtService.getExpirationTime());
         loginResponse.setUser(authenticatedUser);
         return ResponseEntity.ok(loginResponse);
     }
@@ -214,9 +251,9 @@ public class AuthenticationController {
             response.addHeader("Set-Cookie",
                     buildAuthCookie("refreshToken", refreshToken, refreshTokenExpiration / 1000).toString());
             LoginResponse loginResponse = new LoginResponse();
-            // loginResponse.setToken(jwtToken);
-            // loginResponse.setRefreshToken(refreshToken);
-            // loginResponse.setExpiresIn(jwtService.getExpirationTime());
+            loginResponse.setToken(jwtToken);
+            loginResponse.setRefreshToken(refreshToken);
+            loginResponse.setExpiresIn(jwtService.getExpirationTime());
             loginResponse.setUser(user);
             return ResponseEntity.ok(loginResponse);
         } else {
@@ -590,6 +627,7 @@ public class AuthenticationController {
 
         userRepository.findByEmail(authentication.getName())
                 .ifPresent(user -> {
+                    body.put("userId", user.getId());
                     body.put("fullName", user.getFullName());
                     body.put("dashboardUsername", user.getDashboardUsername());
                     body.put("permissions",

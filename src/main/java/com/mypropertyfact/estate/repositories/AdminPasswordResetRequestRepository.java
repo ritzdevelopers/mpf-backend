@@ -12,6 +12,8 @@ public interface AdminPasswordResetRequestRepository extends JpaRepository<Admin
 
     List<AdminPasswordResetRequest> findByStatusOrderByCreatedAtDesc(AdminPasswordResetStatus status);
 
+    void deleteByUser_Id(Integer userId);
+
     void deleteByUser_IdAndStatus(Integer userId, AdminPasswordResetStatus status);
 
     long countByStatus(AdminPasswordResetStatus status);

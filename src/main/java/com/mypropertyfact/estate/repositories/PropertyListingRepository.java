@@ -8,14 +8,13 @@ import com.mypropertyfact.estate.enums.ProjectApprovalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-
-@Repository
 public interface PropertyListingRepository extends JpaRepository<PropertyListing, Long> {
 
     // Find all listings by user
@@ -60,6 +59,10 @@ public interface PropertyListingRepository extends JpaRepository<PropertyListing
 
     // Count listings by user
     long countByUserId(Integer userId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE PropertyListing pl SET pl.approvedBy = null WHERE pl.approvedBy.id = :userId")
+    void clearApprovedByUserId(@Param("userId") Integer userId);
 
     // Count listings by approval status
     long countByApprovalStatus(ProjectApprovalStatus status);

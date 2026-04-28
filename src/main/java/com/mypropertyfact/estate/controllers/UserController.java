@@ -237,4 +237,20 @@ public class UserController {
             return ResponseEntity.notFound().build();
         }
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<?> deleteUserPermanently(@PathVariable Integer id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof User actor)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            userService.deleteUserAsSuperAdmin(id, actor.getId());
+            log.info("User deleted permanently: id {}", id);
+            return ResponseEntity.ok(Map.of("message", "User deleted."));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        }
+    }
 }

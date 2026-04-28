@@ -14,5 +14,8 @@ public class RegisterUserDto {
 
     private String fullName;
 
+    /** E.164 preferred (e.g. +919876543210). Used by mobile sign-up when collected. */
+    private String phone;
+
     private String role; // Optional: will default to "ROLE_USER" if not provided
 }

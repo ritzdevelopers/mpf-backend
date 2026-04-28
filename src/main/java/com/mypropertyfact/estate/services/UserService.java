@@ -1,11 +1,14 @@
 package com.mypropertyfact.estate.services;
 
 import com.mypropertyfact.estate.entities.User;
+import com.mypropertyfact.estate.repositories.AdminPasswordResetRequestRepository;
+import com.mypropertyfact.estate.repositories.PropertyListingRepository;
 import com.mypropertyfact.estate.repositories.UserRepository;
 import com.mypropertyfact.estate.security.AdminPermissionKeys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +19,8 @@ public class UserService{
     private final PasswordEncoder passwordEncoder;
     private final AdminPermissionService adminPermissionService;
     private final UserRoleService userRoleService;
+    private final PropertyListingRepository propertyListingRepository;
+    private final AdminPasswordResetRequestRepository adminPasswordResetRequestRepository;
 
     public List<User> allUsers() {
         return userRepository.findAll();
@@ -122,5 +127,34 @@ public class UserService{
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         user.setPassword(passwordEncoder.encode(rawPassword));
         return userRepository.save(user);
+    }
+
+    /**
+     * Permanently deletes a user (Super Admin only). Clears references that would block FK constraints.
+     */
+    @Transactional
+    public void deleteUserAsSuperAdmin(int targetUserId, int actingUserId) {
+        if (targetUserId == actingUserId) {
+            throw new IllegalArgumentException("You cannot delete your own account.");
+        }
+        User target = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found."));
+
+        if (userRoleService.userHasRole(targetUserId, "SUPERADMIN")) {
+            long superCount = userRepository.countDistinctUsersHavingActiveRole("SUPERADMIN");
+            if (superCount <= 1) {
+                throw new IllegalArgumentException("Cannot delete the last Super Administrator account.");
+            }
+        }
+
+        if (propertyListingRepository.countByUserId(targetUserId) > 0) {
+            throw new IllegalArgumentException(
+                    "This user has property listing(s). Remove or transfer those listings before deleting the account.");
+        }
+
+        propertyListingRepository.clearApprovedByUserId(targetUserId);
+        adminPasswordResetRequestRepository.deleteByUser_Id(targetUserId);
+
+        userRepository.delete(target);
     }
 }

@@ -12,7 +12,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -22,6 +21,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
+import java.util.Objects;
 
 @Slf4j
 @Component
@@ -81,10 +81,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     .anyMatch(r -> r != null && Boolean.TRUE.equals(r.getIsActive())
                                             && ("SUPERADMIN".equalsIgnoreCase(r.getRoleName())
                                                     || "ADMIN".equalsIgnoreCase(r.getRoleName())));
+                            Integer tokenVersion = jwtService.extractTokenVersion(token);
+                            Integer currentVersion = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
                             if (staffSessionVersioned) {
-                                Integer tokenVersion = jwtService.extractTokenVersion(token);
-                                Integer currentVersion = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
                                 sessionValid = (tokenVersion != null && tokenVersion.equals(currentVersion));
+                            } else if (tokenVersion != null) {
+                                // Consumer / non-staff: invalidate sessions when tokenVersion changes (e.g. password reset).
+                                sessionValid = Objects.equals(tokenVersion, currentVersion);
                             }
                         }
                     if (sessionValid) {
