@@ -95,25 +95,21 @@ public class AuthenticationService {
             validateDashboardUsername(input.getDashboardUsername(), user);
         }
 
-        if (hasPendingAdminStaffApproval(user)) {
+        if (isPortalApprovalPending(user)) {
             throw new BadCredentialsException(
-                    "Your Admin access is pending approval by a Super Admin. "
-                            + "You will be able to sign in to the admin dashboard after it is approved.");
+                    "Your account is pending approval by a Super Administrator. "
+                            + "You will be able to sign in after it is activated.");
         }
 
         return user;
     }
 
-    private static boolean hasPendingAdminStaffApproval(User user) {
-        if (user.getRoles() == null || user.getRoles().isEmpty()) {
-            return false;
-        }
-        boolean hasActiveAdmin = user.getRoles().stream()
-                .anyMatch(r -> r != null
-                        && r.getRoleName() != null
-                        && "ADMIN".equalsIgnoreCase(r.getRoleName())
-                        && Boolean.TRUE.equals(r.getIsActive()));
-        return hasActiveAdmin && Boolean.FALSE.equals(user.getAdminStaffApproved());
+    /**
+     * True when portal self-registration still needs Super Admin activation.
+     * {@link User#hasActiveSuperAdminRole()} is exempt so the sole Super Admin cannot be locked out.
+     */
+    public static boolean isPortalApprovalPending(User user) {
+        return user.needsPortalActivation();
     }
 
     private static boolean isStaffDashboardUser(User user) {
@@ -314,7 +310,7 @@ public class AuthenticationService {
         user.setRoles(roles);
         user.setEnabled(true);
         user.setVerified(true);
-        user.setAdminStaffApproved(!hasAdmin);
+        user.setAdminStaffApproved(false);
         return userRepository.save(user);
     }
 

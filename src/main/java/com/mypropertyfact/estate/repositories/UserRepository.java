@@ -24,11 +24,9 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     long countDistinctUsersHavingActiveRole(@Param("roleName") String roleName);
 
     @Query("""
-            SELECT DISTINCT u FROM User u
-            JOIN u.roles r
-            WHERE UPPER(r.roleName) = 'ADMIN'
-              AND r.isActive = true
-              AND u.adminStaffApproved = false
+            SELECT u FROM User u
+            WHERE u.adminStaffApproved = false
+            ORDER BY u.createdAt ASC
             """)
-    List<User> findPendingAdminStaffApprovals();
+    List<User> findPendingPortalApprovals();
 }

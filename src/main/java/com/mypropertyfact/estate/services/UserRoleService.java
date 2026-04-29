@@ -62,20 +62,19 @@ public class UserRoleService {
     public User approvePendingAdminStaff(Integer userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        if (!Boolean.FALSE.equals(user.getAdminStaffApproved())) {
+            throw new IllegalArgumentException("This account is not waiting for approval.");
+        }
         boolean hasAdmin = user.getRoles() != null && user.getRoles().stream()
                 .anyMatch(r -> r != null && r.getRoleName() != null
                         && "ADMIN".equalsIgnoreCase(r.getRoleName())
                         && Boolean.TRUE.equals(r.getIsActive()));
-        if (!hasAdmin) {
-            throw new IllegalArgumentException("This user does not have the Admin role.");
-        }
-        if (!Boolean.FALSE.equals(user.getAdminStaffApproved())) {
-            throw new IllegalArgumentException("This account is not waiting for admin approval.");
+        if (hasAdmin) {
+            if (user.getAdminPermissions() == null || user.getAdminPermissions().isEmpty()) {
+                user.setAdminPermissions(new HashSet<>(AdminPermissionKeys.allKeys()));
+            }
         }
         user.setAdminStaffApproved(true);
-        if (user.getAdminPermissions() == null || user.getAdminPermissions().isEmpty()) {
-            user.setAdminPermissions(new HashSet<>(AdminPermissionKeys.allKeys()));
-        }
         int v = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
         user.setTokenVersion(v + 1);
         return userRepository.save(user);
@@ -85,15 +84,28 @@ public class UserRoleService {
     public User rejectPendingAdminStaff(Integer userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        MasterRole adminRole = masterRoleRepository.findByRoleNameIgnoreCase("ADMIN")
-                .orElseThrow(() -> new IllegalStateException("ADMIN role is not configured."));
-        if (user.getRoles() != null) {
-            int adminId = adminRole.getId();
-            user.getRoles().removeIf(r -> r != null && r.getId() == adminId);
+        if (!Boolean.FALSE.equals(user.getAdminStaffApproved())) {
+            throw new IllegalArgumentException("This account is not waiting for approval.");
         }
-        user.setAdminPermissions(new HashSet<>());
+
+        boolean hasAdmin = user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(r -> r != null && r.getRoleName() != null
+                        && "ADMIN".equalsIgnoreCase(r.getRoleName())
+                        && Boolean.TRUE.equals(r.getIsActive()));
+
+        if (hasAdmin) {
+            MasterRole adminMaster = masterRoleRepository.findByRoleNameIgnoreCase("ADMIN")
+                    .orElseThrow(() -> new IllegalStateException("ADMIN role is not configured."));
+            if (user.getRoles() != null) {
+                int adminId = adminMaster.getId();
+                user.getRoles().removeIf(r -> r != null && r.getId() == adminId);
+            }
+            user.setAdminPermissions(new HashSet<>());
+            user.setDashboardUsername(null);
+        } else {
+            user.setEnabled(false);
+        }
         user.setAdminStaffApproved(true);
-        user.setDashboardUsername(null);
         int v = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
         user.setTokenVersion(v + 1);
         return userRepository.save(user);

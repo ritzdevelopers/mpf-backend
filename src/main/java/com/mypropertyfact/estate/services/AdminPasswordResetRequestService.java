@@ -105,7 +105,7 @@ public class AdminPasswordResetRequestService {
     @Transactional(readOnly = true)
     public PendingPermissionsResponse buildPendingPermissions() {
         return PendingPermissionsResponse.builder()
-                .adminAccessRequests(userService.findPendingAdminStaffApprovals())
+                .adminAccessRequests(userService.findPendingPortalApprovals())
                 .passwordChangeRequests(listPendingRows())
                 .build();
     }
@@ -113,7 +113,7 @@ public class AdminPasswordResetRequestService {
     @Transactional(readOnly = true)
     public PendingPermissionsCountResponse countPending() {
         int pw = (int) resetRepository.countByStatus(AdminPasswordResetStatus.PENDING);
-        int admin = userService.findPendingAdminStaffApprovals().size();
+        int admin = userService.findPendingPortalApprovals().size();
         return PendingPermissionsCountResponse.builder()
                 .adminAccessPending(admin)
                 .passwordChangePending(pw)

@@ -88,8 +88,8 @@ public class User implements UserDetails {
     private Integer tokenVersion = 0;
 
     /**
-     * When false, the user has the Admin role in the database but must not receive {@code ROLE_ADMIN}
-     * in JWT/security until a Super Admin approves (self-registration flow).
+     * When false, portal self-registration ({@code /auth/admin-register}) is complete but no Super
+     * Administrator has activated the account; login must be blocked until approved.
      */
     @Column(name = "admin_staff_approved", nullable = false)
     private Boolean adminStaffApproved = true;
@@ -112,6 +112,35 @@ public class User implements UserDetails {
         return enquiryAccessPinHash != null && !enquiryAccessPinHash.isBlank();
     }
 
+    /**
+     * Active Super Admin is never granted via self-registration; even if {@code admin_staff_approved}
+     * was set false by migration or mistake, this account must stay able to sign in and manage approvals.
+     */
+    public boolean hasActiveSuperAdminRole() {
+        if (roles == null || roles.isEmpty()) {
+            return false;
+        }
+        return roles.stream()
+                .anyMatch(r -> r != null
+                        && Boolean.TRUE.equals(r.getIsActive())
+                        && r.getRoleName() != null
+                        && "SUPERADMIN".equalsIgnoreCase(r.getRoleName()));
+    }
+
+    /**
+     * True when this user must wait for Super Admin activation after portal self-registration.
+     * Super Admins are exempt (they cannot be created from the public admin register form).
+     */
+    public boolean needsPortalActivation() {
+        return Boolean.FALSE.equals(adminStaffApproved) && !hasActiveSuperAdminRole();
+    }
+
+    /** For API/UI: mirrors {@link #needsPortalActivation()} (not the raw DB column alone). */
+    @JsonProperty("portalActivationPending")
+    public boolean isPortalActivationPending() {
+        return needsPortalActivation();
+    }
+
     @CreationTimestamp
     @Column(updatable = false, name = "created_at")
     private Date createdAt;
@@ -123,17 +152,18 @@ public class User implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         List<GrantedAuthority> authorities = new ArrayList<>();
-        
+
+        if (needsPortalActivation()) {
+            return authorities;
+        }
+
         // Add authorities from MasterRole set (multiple roles support)
         if (roles != null && !roles.isEmpty()) {
             for (MasterRole masterRole : roles) {
                 if (masterRole != null && masterRole.getIsActive() != null && masterRole.getIsActive()) {
-                    if (masterRole.getRoleName() != null
-                            && "ADMIN".equalsIgnoreCase(masterRole.getRoleName())
-                            && Boolean.FALSE.equals(adminStaffApproved)) {
-                        continue;
+                    if (masterRole.getRoleName() != null) {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_" + masterRole.getRoleName()));
                     }
-                    authorities.add(new SimpleGrantedAuthority("ROLE_" + masterRole.getRoleName()));
                 }
             }
         }

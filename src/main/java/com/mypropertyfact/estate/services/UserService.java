@@ -26,8 +26,10 @@ public class UserService{
         return userRepository.findAll();
     }
 
-    public List<User> findPendingAdminStaffApprovals() {
-        return userRepository.findPendingAdminStaffApprovals();
+    public List<User> findPendingPortalApprovals() {
+        return userRepository.findPendingPortalApprovals().stream()
+                .filter(u -> !u.hasActiveSuperAdminRole())
+                .toList();
     }
 
     public Optional<User> findById(Integer id) {

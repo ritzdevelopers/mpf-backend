@@ -3,11 +3,7 @@ package com.mypropertyfact.estate.controllers;
 import com.mypropertyfact.estate.dtos.AdminPasswordResetEmailCheckRequest;
 import com.mypropertyfact.estate.dtos.AdminPasswordResetSubmitRequest;
 import com.mypropertyfact.estate.dtos.AdminPortalRegisterRequest;
-import com.mypropertyfact.estate.dtos.ForgotPasswordRequest;
 import com.mypropertyfact.estate.dtos.LoginUserDto;
-import com.mypropertyfact.estate.dtos.RegisterUserDto;
-import com.mypropertyfact.estate.dtos.ResetPasswordRequest;
-import com.mypropertyfact.estate.dtos.TokenRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -18,38 +14,20 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
 /**
- * Legacy authentication entry point (/{@code /api/v1/auth/**}). Prefer
- * {@link AppAuthApiController} (consumer) and {@link AdminPortalAuthApiController} (dashboard).
+ * Dashboard / CMS staff authentication ({@code /api/v1/admin-portal/auth/**}).
  */
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/api/v1/admin-portal/auth")
 @RequiredArgsConstructor
-public class AuthenticationController {
+public class AdminPortalAuthApiController {
 
     private final AuthHubDelegate hub;
-
-    @PostMapping("/signup")
-    public ResponseEntity<?> register(
-            @Valid @RequestBody RegisterUserDto registerUserDto, HttpServletResponse response) {
-        return hub.register(registerUserDto, response);
-    }
-
-    @PostMapping("/forgot-password")
-    public ResponseEntity<Map<String, Object>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest body) {
-        return hub.forgotPassword(body);
-    }
-
-    @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest body) {
-        return hub.resetPassword(body);
-    }
 
     @GetMapping("/admin-register-meta")
     public ResponseEntity<Map<String, Object>> adminRegisterMeta() {
@@ -74,35 +52,14 @@ public class AuthenticationController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> authenticate(@RequestBody LoginUserDto loginUserDto,
+    public ResponseEntity<?> login(@RequestBody LoginUserDto loginUserDto,
             HttpServletResponse response) {
         return hub.authenticate(loginUserDto, response);
     }
 
-    @PostMapping("/google")
-    public ResponseEntity<?> googleLogin(@RequestBody TokenRequest tokenRequest,
-            HttpServletResponse response) throws Exception {
-        return hub.googleLogin(tokenRequest, response);
-    }
-
-    @PostMapping("/verify")
-    public ResponseEntity<?> verifyToken(@RequestHeader("Authorization") String authHeader) {
-        return hub.verifyToken(authHeader);
-    }
-
     @PostMapping("/refresh")
-    public ResponseEntity<?> refreshToken(@RequestBody Map<String, String> request) {
+    public ResponseEntity<?> refresh(@RequestBody Map<String, String> request) {
         return hub.refreshToken(request);
-    }
-
-    @PostMapping("/send-otp")
-    public ResponseEntity<?> sendOTP(@RequestBody Map<String, String> request) {
-        return hub.sendOTP(request);
-    }
-
-    @PostMapping("/verify-otp")
-    public ResponseEntity<?> verifyOTPAndRegister(@RequestBody Map<String, String> request) {
-        return hub.verifyOTPAndRegister(request);
     }
 
     @GetMapping("/session")
@@ -136,7 +93,8 @@ public class AuthenticationController {
     }
 
     @PostMapping("/refresh-token")
-    public ResponseEntity<?> refreshAccessToken(HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<?> refreshAccessToken(HttpServletRequest request,
+            HttpServletResponse response) {
         return hub.refreshAccessToken(request, response);
     }
 }

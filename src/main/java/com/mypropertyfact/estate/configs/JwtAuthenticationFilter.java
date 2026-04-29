@@ -73,6 +73,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (userEmail != null && !userEmail.isBlank()) {
 
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+                if (userDetails instanceof User loadedUser && loadedUser.needsPortalActivation()) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
                     if (jwtService.isTokenValid(token, userDetails)) {
                         boolean sessionValid = true;

@@ -1,10 +1,6 @@
 package com.mypropertyfact.estate.controllers;
 
-import com.mypropertyfact.estate.dtos.AdminPasswordResetEmailCheckRequest;
-import com.mypropertyfact.estate.dtos.AdminPasswordResetSubmitRequest;
-import com.mypropertyfact.estate.dtos.AdminPortalRegisterRequest;
 import com.mypropertyfact.estate.dtos.ForgotPasswordRequest;
-import com.mypropertyfact.estate.dtos.LoginUserDto;
 import com.mypropertyfact.estate.dtos.RegisterUserDto;
 import com.mypropertyfact.estate.dtos.ResetPasswordRequest;
 import com.mypropertyfact.estate.dtos.TokenRequest;
@@ -13,7 +9,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,20 +20,19 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * Legacy authentication entry point (/{@code /api/v1/auth/**}). Prefer
- * {@link AppAuthApiController} (consumer) and {@link AdminPortalAuthApiController} (dashboard).
+ * Consumer / mobile / public site authentication ({@code /api/v1/app/auth/**}).
  */
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/api/v1/app/auth")
 @RequiredArgsConstructor
-public class AuthenticationController {
+public class AppAuthApiController {
 
     private final AuthHubDelegate hub;
 
     @PostMapping("/signup")
     public ResponseEntity<?> register(
-            @Valid @RequestBody RegisterUserDto registerUserDto, HttpServletResponse response) {
-        return hub.register(registerUserDto, response);
+            @Valid @RequestBody RegisterUserDto dto, HttpServletResponse response) {
+        return hub.register(dto, response);
     }
 
     @PostMapping("/forgot-password")
@@ -49,34 +43,6 @@ public class AuthenticationController {
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest body) {
         return hub.resetPassword(body);
-    }
-
-    @GetMapping("/admin-register-meta")
-    public ResponseEntity<Map<String, Object>> adminRegisterMeta() {
-        return hub.adminRegisterMeta();
-    }
-
-    @PostMapping("/admin-register")
-    public ResponseEntity<?> adminRegister(@Valid @RequestBody AdminPortalRegisterRequest body) {
-        return hub.adminRegister(body);
-    }
-
-    @PostMapping("/admin-password-reset-check-email")
-    public ResponseEntity<?> checkAdminPasswordResetEmail(
-            @Valid @RequestBody AdminPasswordResetEmailCheckRequest body) {
-        return hub.checkAdminPasswordResetEmail(body);
-    }
-
-    @PostMapping("/admin-password-reset-request")
-    public ResponseEntity<?> requestAdminPasswordReset(
-            @Valid @RequestBody AdminPasswordResetSubmitRequest body) {
-        return hub.requestAdminPasswordReset(body);
-    }
-
-    @PostMapping("/login")
-    public ResponseEntity<?> authenticate(@RequestBody LoginUserDto loginUserDto,
-            HttpServletResponse response) {
-        return hub.authenticate(loginUserDto, response);
     }
 
     @PostMapping("/google")
@@ -105,29 +71,10 @@ public class AuthenticationController {
         return hub.verifyOTPAndRegister(request);
     }
 
+    /** Optional: same JWT session shape as dashboard for shared cookies. */
     @GetMapping("/session")
     public ResponseEntity<?> session(Authentication authentication, HttpServletRequest request) {
         return hub.session(authentication, request);
-    }
-
-    @GetMapping("/admin-permission-definitions")
-    @PreAuthorize("hasRole('SUPERADMIN')")
-    public ResponseEntity<?> adminPermissionDefinitions() {
-        return hub.adminPermissionDefinitions();
-    }
-
-    @GetMapping("/enquiry-access-status")
-    public ResponseEntity<?> enquiryAccessStatus(
-            Authentication authentication, HttpServletRequest request) {
-        return hub.enquiryAccessStatus(authentication, request);
-    }
-
-    @PostMapping("/unlock-enquiries")
-    public ResponseEntity<?> unlockEnquiries(
-            @RequestBody Map<String, String> body,
-            HttpServletResponse response,
-            Authentication authentication) {
-        return hub.unlockEnquiries(body, response, authentication);
     }
 
     @PostMapping("/logout")

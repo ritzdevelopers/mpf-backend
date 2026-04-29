@@ -72,7 +72,15 @@ public class JwtService {
         return generateToken(new HashMap<>(), user, jwtRefreshTokenExpiration);
     }
 
+    private static void requirePortalApproved(User user) {
+        if (user.needsPortalActivation()) {
+            throw new IllegalStateException(
+                    "This account has not yet been activated by a Super Administrator.");
+        }
+    }
+
     public String generateToken(Map<String, Object> extraClaims, User user, long expiration) {
+        requirePortalApproved(user);
         Set<String> userRoles = user.getRoles() != null
                 ? user.getRoles().stream()
                         .filter(role -> role != null && role.getIsActive() != null && role.getIsActive())
@@ -238,6 +246,10 @@ public class JwtService {
             throw new RuntimeException("User not found");
         }
         User user = userOpt.get();
+        if (user.needsPortalActivation()) {
+            throw new RuntimeException(
+                    "This account has not yet been activated by a Super Administrator.");
+        }
         if (userRoleService.userHasRole(user.getId(), "SUPERADMIN")
                 || userRoleService.userHasRole(user.getId(), "ADMIN")) {
             Integer tokenVersion = extractTokenVersion(refreshToken);
