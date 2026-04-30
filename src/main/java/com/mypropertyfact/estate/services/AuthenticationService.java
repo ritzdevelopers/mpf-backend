@@ -67,6 +67,7 @@ public class AuthenticationService {
         }
         user.setPassword(passwordEncoder.encode(input.getPassword()));
         user.setEnabled(true);
+        user.setUserCategory("APP_USER");
 
         Set<MasterRole> roles = new HashSet<>();
         addDefaultUserRole(roles);
@@ -194,6 +195,7 @@ public class AuthenticationService {
         user.setEnabled(true);
         user.setVerified(true);
         user.setAdminStaffApproved(true);
+        user.setUserCategory("APP_USER");
 
         // Generate a secure random password (never used for login)
         String randomPassword = UUID.randomUUID().toString();
@@ -311,6 +313,7 @@ public class AuthenticationService {
         user.setEnabled(true);
         user.setVerified(true);
         user.setAdminStaffApproved(false);
+        user.setUserCategory("ADMIN_USER");
         return userRepository.save(user);
     }
 

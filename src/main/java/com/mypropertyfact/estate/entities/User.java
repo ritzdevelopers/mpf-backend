@@ -83,6 +83,13 @@ public class User implements UserDetails {
     @Column(name = "enabled")
     private Boolean enabled = true;
 
+    /**
+     * Segment for account source/testing used by Manage Users.
+     * Allowed values: TEST_USER, APP_USER, ADMIN_USER.
+     */
+    @Column(name = "user_category", length = 32)
+    private String userCategory = "APP_USER";
+
     /** Incremented on each admin login to invalidate previous sessions (single-session for admin). */
     @Column(name = "token_version", nullable = false)
     private Integer tokenVersion = 0;

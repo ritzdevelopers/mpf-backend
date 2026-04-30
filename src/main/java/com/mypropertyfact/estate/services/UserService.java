@@ -7,6 +7,7 @@ import com.mypropertyfact.estate.repositories.UserRepository;
 import com.mypropertyfact.estate.security.AdminPermissionKeys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -74,6 +75,12 @@ public class UserService{
             String u = updatedUser.getDashboardUsername().trim();
             user.setDashboardUsername(u.isEmpty() ? null : u);
         }
+        if (updatedUser.getUserCategory() != null) {
+            if (!currentActorIsSuperAdmin()) {
+                throw new IllegalArgumentException("Only Super Admin can change user category.");
+            }
+            user.setUserCategory(normalizeUserCategory(updatedUser.getUserCategory()));
+        }
         if (updatedUser.getAdminPermissions() != null) {
             if (userRoleService.userHasRole(id, "ADMIN")) {
                 user.setAdminPermissions(
@@ -105,6 +112,23 @@ public class UserService{
         }
 
         return userRepository.save(user);
+    }
+
+    private boolean currentActorIsSuperAdmin() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof User actor) || actor.getId() == null) {
+            return false;
+        }
+        return userRoleService.userHasRole(actor.getId(), "SUPERADMIN");
+    }
+
+    private String normalizeUserCategory(String raw) {
+        String v = raw == null ? "" : raw.trim().toUpperCase();
+        return switch (v) {
+            case "TEST_USER", "APP_USER", "ADMIN_USER" -> v;
+            default -> throw new IllegalArgumentException(
+                    "Invalid user category. Allowed: TEST_USER, APP_USER, ADMIN_USER.");
+        };
     }
 
     public User activateUser(Integer id) {
