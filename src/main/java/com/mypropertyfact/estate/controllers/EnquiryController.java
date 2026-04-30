@@ -37,7 +37,14 @@ public class EnquiryController {
 
     @PostMapping("/post")
     public ResponseEntity<Response> addUpdate(@RequestBody Enquery enquery) {
-        return new ResponseEntity<>(enquiryService.addUpdate(enquery), HttpStatus.OK);
+        // Current website forms use this endpoint; default source is WEBSITE.
+        return new ResponseEntity<>(enquiryService.addUpdate(enquery, "WEBSITE"), HttpStatus.OK);
+    }
+
+    @PostMapping("/post-app")
+    public ResponseEntity<Response> addUpdateFromApp(@RequestBody Enquery enquery) {
+        // Dedicated endpoint for mobile app leads.
+        return new ResponseEntity<>(enquiryService.addUpdate(enquery, "APP"), HttpStatus.OK);
     }
 
     @DeleteMapping("/delete/{id}")

@@ -29,6 +29,8 @@ public class EnquiryService {
 
     private final PropertyListingRepository propertyListingRepository;
     private final LeadService leadService;
+    private static final String SOURCE_WEBSITE = "WEBSITE";
+    private static final String SOURCE_APP = "APP";
 
     public List<Enquery> getAll() {
         return enqueryRepository.findAll();
@@ -39,8 +41,14 @@ public class EnquiryService {
     }
 
     public Response addUpdate(Enquery enquery) {
+        return addUpdate(enquery, null);
+    }
+
+    public Response addUpdate(Enquery enquery, String forcedSource) {
         Response response = new Response();
         try {
+            String source = normalizeLeadSource(forcedSource != null ? forcedSource : enquery.getEnquiryFrom());
+            enquery.setEnquiryFrom(source);
             if (enquery.getId() > 0) {
                 Enquery dbEnquery = enqueryRepository.findById(enquery.getId()).orElse(null);
                 if (dbEnquery != null) {
@@ -50,7 +58,7 @@ public class EnquiryService {
                     dbEnquery.setMessage(enquery.getMessage());
                     dbEnquery.setPageName(enquery.getPageName());
                     dbEnquery.setUpdatedAt(LocalDateTime.now());
-                    dbEnquery.setEnquiryFrom(enquery.getEnquiryFrom());
+                    dbEnquery.setEnquiryFrom(source);
                     dbEnquery.setProjectLink(enquery.getProjectLink());
                     dbEnquery.setPropertyId(enquery.getPropertyId());
                     enqueryRepository.save(dbEnquery);
@@ -61,7 +69,7 @@ public class EnquiryService {
                             enquery.getEmail(),
                             enquery.getPageName(),
                             "lead",
-                            enquery.getEnquiryFrom(),
+                            source,
                             enquery.getProjectLink()
                     );
                     response.setMessage("Data updated successfully...");
@@ -79,7 +87,7 @@ public class EnquiryService {
                             enquery.getEmail(),
                             enquery.getPageName(),
                             "lead",
-                            enquery.getEnquiryFrom(),
+                            source,
                             enquery.getProjectLink()
                     );
                 } catch (Exception ignored) {
@@ -92,6 +100,15 @@ public class EnquiryService {
             response.setMessage(e.getMessage());
         }
         return response;
+    }
+
+    private String normalizeLeadSource(String raw) {
+        String value = raw == null ? "" : raw.trim().toUpperCase();
+        if (SOURCE_APP.equals(value)) return SOURCE_APP;
+        if ("WEB".equals(value) || SOURCE_WEBSITE.equals(value) || value.isEmpty()) {
+            return SOURCE_WEBSITE;
+        }
+        return SOURCE_WEBSITE;
     }
 
     public Response deleteEnquiry(int id) {
