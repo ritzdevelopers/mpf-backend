@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface SiteTrafficEventRepository extends JpaRepository<SiteTrafficEvent, Long> {
@@ -21,6 +22,16 @@ public interface SiteTrafficEventRepository extends JpaRepository<SiteTrafficEve
             LocalDateTime fromInclusive, LocalDateTime toExclusive);
 
     Page<SiteTrafficEvent> findByOccurredAtAfterOrderByOccurredAtDesc(LocalDateTime since, Pageable pageable);
+
+    /**
+     * All events in a time window, oldest first — used for CSV export (can be large).
+     */
+    List<SiteTrafficEvent> findByOccurredAtGreaterThanEqualOrderByOccurredAtAsc(LocalDateTime sinceInclusive);
+
+    /**
+     * Oldest recorded event; used to determine whether enough history exists for full-window exports.
+     */
+    Optional<SiteTrafficEvent> findTopByOrderByOccurredAtAsc();
 
     @Query("SELECT e.path, COUNT(e) FROM SiteTrafficEvent e WHERE e.occurredAt >= :since GROUP BY e.path ORDER BY COUNT(e) DESC")
     List<Object[]> countGroupedByPathSince(@Param("since") LocalDateTime since, Pageable pageable);

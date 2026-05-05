@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -131,6 +132,79 @@ public class SiteTrafficService {
             }
         }
         return false;
+    }
+
+    /**
+     * UTF-8 CSV of public-site traffic events. Visitor IP is only included when the browser has
+     * the traffic-reveal cookie (same as the on-screen visits table); otherwise the IP column is
+     * a redaction notice so exports are still useful for paths and times.
+     */
+    @Transactional(readOnly = true)
+    public byte[] buildVisitsCsvExport(HttpServletRequest request, int hours) {
+        int h = Math.min(Math.max(hours, 1), 168);
+        boolean reveal = hasTrafficRevealCookie(request);
+        LocalDateTime since = LocalDateTime.now().minusHours(h);
+        List<SiteTrafficEvent> rows =
+                siteTrafficEventRepository.findByOccurredAtGreaterThanEqualOrderByOccurredAtAsc(since);
+        int n = rows.size();
+        StringBuilder sb = new StringBuilder(Math.min(n * 96 + 128, 4_000_000));
+        sb.append("occurred_at,path,dwell_ms,visitor_ip,row_type\n");
+        DateTimeFormatter iso = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+        for (SiteTrafficEvent e : rows) {
+            String ip = e.getRemoteAddr();
+            String ipOut;
+            if (reveal) {
+                ipOut = ip != null && !ip.isBlank() ? ip : "";
+            } else {
+                ipOut = "REDACTED (unlock IPs in MPF Traffic page first)";
+            }
+            String path = e.getPath() != null ? e.getPath() : "";
+            String dwell = e.getDwellMs() == null ? "" : String.valueOf(e.getDwellMs());
+            String type = e.getDwellMs() == null ? "ping" : "visit";
+            sb.append(escapeCsvField(e.getOccurredAt().format(iso)))
+                    .append(',')
+                    .append(escapeCsvField(path))
+                    .append(',')
+                    .append(dwell)
+                    .append(',')
+                    .append(escapeCsvField(ipOut))
+                    .append(',')
+                    .append(type)
+                    .append('\n');
+        }
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasExportWindowHistory(int hours) {
+        int h = Math.min(Math.max(hours, 1), 168);
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(h);
+        return siteTrafficEventRepository.findTopByOrderByOccurredAtAsc()
+                .map(SiteTrafficEvent::getOccurredAt)
+                .map(oldest -> !oldest.isAfter(cutoff))
+                .orElse(false);
+    }
+
+    @Transactional(readOnly = true)
+    public LocalDateTime reportReadyAtForHours(int hours) {
+        int h = Math.min(Math.max(hours, 1), 168);
+        return siteTrafficEventRepository.findTopByOrderByOccurredAtAsc()
+                .map(SiteTrafficEvent::getOccurredAt)
+                .map(oldest -> oldest.plusHours(h))
+                .orElse(null);
+    }
+
+    private static String escapeCsvField(String s) {
+        if (s == null) {
+            return "";
+        }
+        if (s.indexOf(',') < 0
+                && s.indexOf('"') < 0
+                && s.indexOf('\n') < 0
+                && s.indexOf('\r') < 0) {
+            return s;
+        }
+        return '"' + s.replace("\"", "\"\"") + '"';
     }
 
     @Transactional(readOnly = true)
@@ -241,11 +315,16 @@ public class SiteTrafficService {
             top.add(new SiteTrafficPathCountDto(String.valueOf(row[0]), cnt));
         }
 
+        boolean report24hReady = hasExportWindowHistory(24);
+        LocalDateTime report24hReadyAt = reportReadyAtForHours(24);
+
         return SiteTrafficSummaryResponse.builder()
                 .visitsLast15Minutes(c15)
                 .visitsLast1Hour(c60)
                 .visitsLast24Hours(c24)
                 .topPathsLast24Hours(top)
+                .report24hReady(report24hReady)
+                .report24hReadyAt(report24hReadyAt != null ? report24hReadyAt.toString() : null)
                 .build();
     }
 

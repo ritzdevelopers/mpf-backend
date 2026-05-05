@@ -15,6 +15,8 @@ public class AdminAuditLogEntryDto {
     private Long id;
     private LocalDateTime occurredAt;
     private String actorEmail;
+    /** Display name from {@code users.full_name} when {@link #actorUserId} is known. */
+    private String actorFullName;
     private Integer actorUserId;
     private String httpMethod;
     private String requestPath;

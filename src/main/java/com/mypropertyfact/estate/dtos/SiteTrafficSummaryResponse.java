@@ -16,4 +16,6 @@ public class SiteTrafficSummaryResponse {
     private long visitsLast1Hour;
     private long visitsLast24Hours;
     private List<SiteTrafficPathCountDto> topPathsLast24Hours;
+    private boolean report24hReady;
+    private String report24hReadyAt;
 }

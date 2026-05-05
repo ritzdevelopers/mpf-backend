@@ -14,7 +14,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @RestController
@@ -77,6 +80,29 @@ public class SuperAdminTrackingController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size) {
         return ResponseEntity.ok(siteTrafficService.listRecentVisits(request, page, size));
+    }
+
+    /**
+     * CSV export of public-site traffic events in the last N hours (1–168). Real IPs only if the
+     * traffic-reveal cookie is set (same as on-screen table).
+     */
+    @GetMapping(value = "/traffic/visits-export", produces = "text/csv")
+    public ResponseEntity<byte[]> trafficVisitsExport(
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "24") int hours) {
+        int safeHours = Math.min(Math.max(hours, 1), 168);
+        if (!siteTrafficService.hasExportWindowHistory(safeHours)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body(("Export is available only after " + safeHours + " hours of collected traffic data.")
+                            .getBytes(StandardCharsets.UTF_8));
+        }
+        byte[] csv = siteTrafficService.buildVisitsCsvExport(request, safeHours);
+        String filename = "mpf-public-traffic-" + safeHours + "h.csv";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(csv);
     }
 
     @GetMapping("/audit-logs")

@@ -151,10 +151,16 @@ public final class AdminApiTaskDescriber {
             return "Role management";
         }
         if (path.contains("/api/v1/admin/super/traffic")) {
+            if (path.contains("/traffic/visits-export")) {
+                return "Download traffic CSV export";
+            }
             return "View live traffic summary";
         }
         if (path.contains("/api/v1/admin/super/audit-logs")) {
             return "View admin audit logs";
+        }
+        if (path.contains("/api/v1/admin/management/activities")) {
+            return "View management activity log";
         }
 
         return fallbackVerb(method, path);
