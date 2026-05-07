@@ -144,3 +144,9 @@ MODIFY COLUMN show_featured_properties BIT(1) AFTER project_thumbnail_alt_tag,
 MODIFY COLUMN status BIT(1) AFTER show_featured_properties,
 MODIFY COLUMN created_at DATETIME(6) AFTER status,
 MODIFY COLUMN updated_at DATETIME(6) AFTER created_at;
+
+// Developer / builder logo + gallery (ZIP upload; filenames JSON)
+
+ALTER TABLE builders
+    ADD COLUMN builder_logo VARCHAR(512) NULL COMMENT 'filename under builders/{slug}/' AFTER meta_keyword,
+    ADD COLUMN developer_gallery_images_json LONGTEXT NULL COMMENT 'JSON array of image filenames' AFTER builder_logo;

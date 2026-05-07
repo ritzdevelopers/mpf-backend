@@ -235,6 +235,26 @@ public class FetchImageController {
         }
     }
 
+    @GetMapping("/builders/{builderSlug}/{filename}")
+    public ResponseEntity<Resource> getBuilderMedia(
+            @PathVariable String builderSlug,
+            @PathVariable String filename) {
+        try {
+            Path imagePath = Paths.get(filePath, "builders", builderSlug, filename);
+            Resource resource = new UrlResource(imagePath.toUri());
+
+            if (resource.exists()) {
+                return ResponseEntity.ok()
+                        .contentType(MediaType.IMAGE_JPEG)
+                        .body(resource);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (MalformedURLException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping("/nearby-benefit/{filename}")
     public ResponseEntity<Resource> getNearbyBenefitImage(@PathVariable String filename) {
         try {

@@ -17,6 +17,10 @@ public class BuilderDto {
     private String builderName;
     private String builderDescription;
     private String slugURL;
+    /** File name under get/images/builders/{slugURL}/ */
+    private String builderLogo;
+    /** Gallery file names from ZIP upload (same folder as logo). */
+    private List<String> developerGalleryImageNames;
     private List<ProjectShortDetails> projectList;
 
     public BuilderDto(int id, String builderName, String builderDescription, String slugURL) {

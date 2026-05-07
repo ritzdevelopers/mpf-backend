@@ -25,6 +25,11 @@ public class Builder {
     private String metaDesc;
     @Lob
     private String metaKeyword;
+    /** File name only; served from /api/v1/get/images/builders/{slugUrl}/{filename} */
+    private String builderLogo;
+    /** JSON array of file names under the same builder folder (from ZIP upload). */
+    @Lob
+    private String developerGalleryImagesJson;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

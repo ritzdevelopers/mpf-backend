@@ -442,7 +442,8 @@ public class FileUtils {
             if (!Arrays.asList("png", "jpg", "jpeg", "gif", "webp").contains(extension)) {
                 extension = "png";
             }
-            String fileName = System.currentTimeMillis() + "_" + name + "." + extension;
+            String outputExtension = extension;
+            String fileName = System.currentTimeMillis() + "_" + name + "." + outputExtension;
             File outFile = new File(destination + fileName);
 
             BufferedImage originalImage = ImageIO.read(new java.io.ByteArrayInputStream(data));
@@ -483,10 +484,18 @@ public class FileUtils {
                 toSave = applySharpen(toSave);
             }
 
-            String formatName = "jpeg".equals(extension) ? "jpg" : extension;
+            String formatName = "jpeg".equals(outputExtension) ? "jpg" : outputExtension;
             Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName(formatName);
             if (!writers.hasNext()) {
-                writers = ImageIO.getImageWritersByFormatName(extension);
+                writers = ImageIO.getImageWritersByFormatName(outputExtension);
+            }
+            // Graceful fallback when WEBP writer plugin is unavailable in runtime.
+            if (!writers.hasNext() && "webp".equalsIgnoreCase(outputExtension)) {
+                outputExtension = "jpg";
+                formatName = "jpg";
+                fileName = System.currentTimeMillis() + "_" + name + "." + outputExtension;
+                outFile = new File(destination + fileName);
+                writers = ImageIO.getImageWritersByFormatName(formatName);
             }
             if (!writers.hasNext()) {
                 Thumbnails.of(toSave).scale(1.0).outputFormat(formatName).outputQuality(JPEG_QUALITY_MAX).toFile(outFile);
@@ -494,7 +503,7 @@ public class FileUtils {
             }
             ImageWriter writer = writers.next();
             ImageWriteParam param = writer.getDefaultWriteParam();
-            if (param.canWriteCompressed() && ("jpg".equals(formatName) || "jpeg".equals(extension) || "webp".equals(extension))) {
+            if (param.canWriteCompressed() && ("jpg".equals(formatName) || "jpeg".equals(outputExtension) || "webp".equals(outputExtension))) {
                 param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
                 param.setCompressionQuality(JPEG_QUALITY_MAX);
             }
