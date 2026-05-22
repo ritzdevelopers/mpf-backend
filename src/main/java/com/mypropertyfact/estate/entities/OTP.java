@@ -34,10 +34,19 @@ public class OTP {
     @Temporal(TemporalType.TIMESTAMP)
     private Date expiresAt;
 
+    /** Nullable only on legacy rows until migrated; always set on new OTPs. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "purpose", length = 32)
+    private OtpPurpose purpose;
+
     @PrePersist
     protected void onCreate() {
-        createdAt = new Date();
-        expiresAt = new Date(System.currentTimeMillis() + 5 * 60 * 1000); // 5 minutes
+        Date now = new Date();
+        createdAt = now;
+        expiresAt = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes
+        if (purpose == null) {
+            purpose = OtpPurpose.MAGIC_LINK;
+        }
     }
 }
 

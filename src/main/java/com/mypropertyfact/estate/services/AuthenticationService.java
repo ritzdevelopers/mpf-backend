@@ -87,7 +87,8 @@ public class AuthenticationService {
 
         // If authentication succeeds, retrieve the user from database
         // This should always succeed if authentication passed, but handle edge case gracefully
-        User user = userRepository.findByEmail(input.getEmail())
+        User user = userRepository.findByEmailIgnoreCase(
+                        input.getEmail() == null ? "" : input.getEmail().trim())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "User account not found. Please contact support if this issue persists."
                 ));
@@ -407,6 +408,40 @@ public class AuthenticationService {
 
         user.setPassword(passwordEncoder.encode(newPassword.trim()));
         user.setTokenVersion(currentTv + 1);
+        userRepository.save(user);
+    }
+
+    /**
+     * Completes mobile registration after OTP verification (password already bcrypt-encoded).
+     */
+    @Transactional
+    public User finalizeMobileRegistrationWithEncodedPassword(
+            String canonicalEmail, String bcryptPasswordHash, String fullName) {
+        if (userRepository.findByEmailIgnoreCase(canonicalEmail).isPresent()) {
+            throw new IllegalArgumentException(
+                    "An account with this email address already exists. Please sign in instead.");
+        }
+        User user = new User();
+        user.setEmail(canonicalEmail);
+        user.setFullName(fullName.trim());
+        user.setPassword(bcryptPasswordHash);
+        user.setEnabled(true);
+        user.setVerified(true);
+        user.setAdminStaffApproved(true);
+        user.setUserCategory("APP_USER");
+
+        Set<MasterRole> roles = new HashSet<>();
+        addDefaultUserRole(roles);
+        user.setRoles(roles);
+        return userRepository.save(user);
+    }
+
+    /** Consumer forgot-password OTP flow: set password and invalidate existing JWT refresh chains. */
+    @Transactional
+    public void replaceConsumerPassword(User user, String newPlainPassword) {
+        int tv = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
+        user.setPassword(passwordEncoder.encode(newPlainPassword.trim()));
+        user.setTokenVersion(tv + 1);
         userRepository.save(user);
     }
 }

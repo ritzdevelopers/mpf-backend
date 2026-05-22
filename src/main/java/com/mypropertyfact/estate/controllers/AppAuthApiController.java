@@ -1,7 +1,10 @@
 package com.mypropertyfact.estate.controllers;
 
+import com.mypropertyfact.estate.dtos.ForgotPasswordOtpCompleteRequest;
 import com.mypropertyfact.estate.dtos.ForgotPasswordRequest;
-import com.mypropertyfact.estate.dtos.RegisterUserDto;
+import com.mypropertyfact.estate.dtos.LoginUserDto;
+import com.mypropertyfact.estate.dtos.RegisterSendOtpRequest;
+import com.mypropertyfact.estate.dtos.RegisterVerifyOtpRequest;
 import com.mypropertyfact.estate.dtos.ResetPasswordRequest;
 import com.mypropertyfact.estate.dtos.TokenRequest;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,10 +32,33 @@ public class AppAuthApiController {
 
     private final AuthHubDelegate hub;
 
-    @PostMapping("/signup")
-    public ResponseEntity<?> register(
-            @Valid @RequestBody RegisterUserDto dto, HttpServletResponse response) {
-        return hub.register(dto, response);
+    /** Consumer email + password sign-in (same handler as {@code POST /api/v1/auth/login}). */
+    @PostMapping("/login")
+    public ResponseEntity<?> authenticate(
+            @RequestBody LoginUserDto loginUserDto, HttpServletResponse response) {
+        return hub.authenticate(loginUserDto, response);
+    }
+
+    @PostMapping("/register/send-otp")
+    public ResponseEntity<?> registerSendOtp(@Valid @RequestBody RegisterSendOtpRequest body) {
+        return hub.sendRegistrationOtp(body);
+    }
+
+    @PostMapping("/register/verify-otp")
+    public ResponseEntity<?> registerVerifyOtp(
+            @Valid @RequestBody RegisterVerifyOtpRequest body, HttpServletResponse response) {
+        return hub.verifyRegistrationOtp(body, response);
+    }
+
+    @PostMapping("/forgot-password/otp/send")
+    public ResponseEntity<?> forgotPasswordOtpSend(@Valid @RequestBody ForgotPasswordRequest body) {
+        return hub.forgotPasswordSendOtp(body);
+    }
+
+    @PostMapping("/forgot-password/otp/complete")
+    public ResponseEntity<?> forgotPasswordOtpComplete(
+            @Valid @RequestBody ForgotPasswordOtpCompleteRequest body) {
+        return hub.forgotPasswordCompleteWithOtp(body);
     }
 
     @PostMapping("/forgot-password")

@@ -7,15 +7,21 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.mypropertyfact.estate.dtos.AdminPasswordResetEmailCheckRequest;
 import com.mypropertyfact.estate.dtos.AdminPasswordResetSubmitRequest;
 import com.mypropertyfact.estate.dtos.AdminPortalRegisterRequest;
+import com.mypropertyfact.estate.dtos.ForgotPasswordOtpCompleteRequest;
 import com.mypropertyfact.estate.dtos.ForgotPasswordRequest;
+import com.mypropertyfact.estate.dtos.RegisterSendOtpRequest;
+import com.mypropertyfact.estate.dtos.RegisterVerifyOtpRequest;
 import com.mypropertyfact.estate.dtos.LoginResponse;
 import com.mypropertyfact.estate.dtos.LoginUserDto;
 import com.mypropertyfact.estate.dtos.RegisterUserDto;
 import com.mypropertyfact.estate.dtos.ResetPasswordRequest;
 import com.mypropertyfact.estate.dtos.TokenRequest;
 import com.mypropertyfact.estate.entities.MasterRole;
+import com.mypropertyfact.estate.entities.OtpPurpose;
+import com.mypropertyfact.estate.entities.PendingRegistration;
 import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.repositories.MasterRoleRepository;
+import com.mypropertyfact.estate.repositories.PendingRegistrationRepository;
 import com.mypropertyfact.estate.repositories.UserRepository;
 import com.mypropertyfact.estate.services.AdminPermissionService;
 import com.mypropertyfact.estate.services.AdminPasswordResetRequestService;
@@ -26,6 +32,7 @@ import com.mypropertyfact.estate.services.JwtService;
 import com.mypropertyfact.estate.services.OTPService;
 import com.mypropertyfact.estate.services.SendEmailHandler;
 import com.mypropertyfact.estate.services.UserRoleService;
+import com.mypropertyfact.estate.validation.ConsumerEmailNormalizer;
 
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.Cookie;
@@ -43,6 +50,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -51,7 +59,7 @@ import java.util.Set;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
+@RequiredArgsConstructor 
 public class AuthHubDelegate {
 
     @Value("${google.client.id}")
@@ -62,6 +70,7 @@ public class AuthHubDelegate {
     private final UserRepository userRepository;
     private final MasterRoleRepository masterRoleRepository;
     private final OTPService otpService;
+    private final PendingRegistrationRepository pendingRegistrationRepository;
     private final PasswordEncoder passwordEncoder;
     private final SendEmailHandler sendEmailHandler;
     private final AdminPermissionService adminPermissionService;
@@ -279,8 +288,9 @@ public class AuthHubDelegate {
         try {
             Claims claims = jwtService.validateToken(refreshToken);
             String username = claims.getSubject();
+            String emailKey = username == null ? "" : username.trim();
 
-            Optional<User> userDetails = userRepository.findByEmail(username);
+            Optional<User> userDetails = userRepository.findByEmailIgnoreCase(emailKey);
 
             if (!userDetails.isPresent()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -321,9 +331,9 @@ public class AuthHubDelegate {
     }
 
     /**
-     * Send OTP to mobile number
-     * POST /auth/send-otp
-     * Body: { "phoneNumber": "+911234567890" }
+     * Send OTP to the user's email (consumer site / mobile app).
+     * POST /app/auth/send-otp or POST /auth/send-otp
+     * Body: {@code { "email": "user@example.com" }}
      */
     public ResponseEntity<?> sendOTP(Map<String, String> request) {
         try {
@@ -334,81 +344,17 @@ public class AuthHubDelegate {
                         .body(Map.of("error", "Email is required", "message", "Please enter your email"));
             }
 
-            // Generate and send OTP (validation happens inside OTPService)
+            // Generate and send OTP (validation + normalization inside OTPService)
             String otpCode = otpService.generateOTP(email);
-            String body = """
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                    <style>
-                        body {
-                        font-family: Arial, sans-serif;
-                        background-color: #f4f4f4;
-                        margin: 0;
-                        padding: 0;
-                        }
-                        .container {
-                        max-width: 600px;
-                        background: #ffffff;
-                        padding: 20px;
-                        border-radius: 8px;
-                        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-                        }
-                        .header {
-                        text-align: center;
-                        font-size: 22px;
-                        font-weight: bold;
-                        color: #2c3e50;
-                        margin-bottom: 15px;
-                        }
-                        .otp-box {
-                        text-align: center;
-                        font-size: 26px;
-                        font-weight: bold;
-                        letter-spacing: 3px;
-                        background: #eef2ff;
-                        padding: 10px;
-                        border-radius: 6px;
-                        margin: 20px 0;
-                        color: #1f2937;
-                        }
-                        .message {
-                        font-size: 14px;
-                        color: #555;
-                        line-height: 1.6;
-                        }
-                        .footer {
-                        margin-top: 20px;
-                        font-size: 13px;
-                        color: #777;
-                        }
-                    </style>
-                    </head>
-                    <body>
-                    <div class="container">
-                        <div class="header">Welcome to My Property Fact</div>
-
-                        <p class="message">
-                        Hello,<br><br>
-                        Your One-Time Password (OTP) to securely log in is:
-                        </p>
-
-                        <div class="otp-box">%s</div>
-
-                        <p class="message">
-                        Please do not share this OTP with anyone. It is valid for a limited time only.
-                        If you did not request this, please ignore this email.
-                        </p>
-
-                        <div class="footer">
-                        Regards,<br>
-                        <strong>My Property Fact Team</strong>
-                        </div>
-                    </div>
-                    </body>
-                    </html>
-                    """.formatted(otpCode);
-            sendEmailHandler.sendEmail(email, "OTP for MyPropertyFact", body);
+            String canonicalEmail = ConsumerEmailNormalizer.normalize(email);
+            String body = buildBrandedOtpEmail(
+                    otpCode,
+                    "Your sign-in code",
+                    """
+                            Enter this One-Time Password (OTP) in the app or website to continue \
+                            securely.<br><br>\
+                            If you did not request this code, you can safely ignore this email.""");
+            sendEmailHandler.sendEmail(canonicalEmail, "Your My Property Fact sign-in code", body);
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "OTP sent successfully",
@@ -425,21 +371,21 @@ public class AuthHubDelegate {
             String errorMessage = e.getMessage();
             if (errorMessage != null && errorMessage.contains("Data truncation")) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Invalid phone number format",
-                                "message", "Please enter a valid 10-digit phone number"));
+                        .body(Map.of("error", "Invalid email format",
+                                "message", "Please enter a valid email address."));
             }
             // Generic error message
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to send OTP",
-                            "message", "Unable to send OTP. Please check your phone number and try again."));
+                            "message", "Unable to send OTP. Please check your email address and try again."));
         }
     }
 
     /**
-     * Verify OTP and register/login user
-     * POST /auth/verify-otp
-     * Body: { "phoneNumber": "+911234567890", "otp": "123456", "fullName": "John
-     * Doe" }
+     * Verify OTP and register or sign in an app user by email.
+     * POST /app/auth/verify-otp or POST /auth/verify-otp
+     * Body: {@code { "email": "...", "otp": "123456", "fullName": "..." }}
+     * {@code fullName} is required only when creating a new account (first-time registration).
      */
     public ResponseEntity<?> verifyOTPAndRegister(Map<String, String> request) {
         try {
@@ -454,8 +400,15 @@ public class AuthHubDelegate {
                                 "message", "Please enter both email and OTP"));
             }
 
-            // Verify OTP (phone number will be normalized inside verifyOTP)
-            boolean isValid = otpService.verifyOTP(email, otpCode);
+            final String canonicalEmail;
+            try {
+                canonicalEmail = ConsumerEmailNormalizer.normalize(email);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", e.getMessage(), "message", e.getMessage()));
+            }
+
+            boolean isValid = otpService.verifyOTP(canonicalEmail, otpCode, OtpPurpose.MAGIC_LINK);
 
             if (!isValid) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -464,28 +417,25 @@ public class AuthHubDelegate {
                                 "The OTP you entered is incorrect or has expired. Please request a new OTP."));
             }
 
-            // Check if user exists
-            Optional<User> existingUser = userRepository.findByEmail(email);
+            Optional<User> existingUser = userRepository.findByEmailIgnoreCase(canonicalEmail);
             User user;
             String userStatus;
 
             if (existingUser.isPresent()) {
-                // User exists - login
                 user = existingUser.get();
                 userStatus = "existing";
             } else {
-                // New user - register
+                if (fullName == null || fullName.trim().isEmpty()) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of(
+                                    "error", "full_name_required",
+                                    "message",
+                                    "Full name is required to create your account."));
+                }
                 user = new User();
-                // Ensure id is null so it can be auto-generated
                 user.setId(null);
-                user.setEmail(email);
-                // Ensure fullName is not null or empty
-                String userFullName = (fullName != null && !fullName.trim().isEmpty())
-                        ? fullName.trim()
-                        : "User";
-                user.setFullName(userFullName);
-                // Generate a random email if not provided
-                user.setEmail(email);
+                user.setEmail(canonicalEmail);
+                user.setFullName(fullName.trim());
                 // Generate a secure random password
                 String randomPassword = UUID.randomUUID().toString();
                 user.setPassword(passwordEncoder.encode(randomPassword));
@@ -565,7 +515,7 @@ public class AuthHubDelegate {
                 } else if (errorMessage.contains("Data truncation")) {
                     userFriendlyMessage = "Invalid data provided. Please check your information and try again.";
                 } else if (errorMessage.contains("Duplicate entry") || errorMessage.contains("already exists")) {
-                    userFriendlyMessage = "An account with this phone number already exists. Please sign in instead.";
+                    userFriendlyMessage = "An account with this email already exists. Please sign in instead.";
                 } else if (errorMessage.contains("ConstraintViolationException") ||
                         errorMessage.contains("constraint")) {
                     userFriendlyMessage = "Invalid information provided. Please check your details and try again.";
@@ -589,9 +539,253 @@ public class AuthHubDelegate {
         }
     }
 
+    /**
+     * Mobile registration step 1: store bcrypt password server-side pending OTP verification.
+     */
+    @Transactional
+    public ResponseEntity<?> sendRegistrationOtp(RegisterSendOtpRequest req) {
+        try {
+            String canonicalEmail = ConsumerEmailNormalizer.normalize(req.getEmail());
+            if (userRepository.findByEmailIgnoreCase(canonicalEmail).isPresent()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", "An account with this email already exists. Please sign in instead."));
+            }
+
+            pendingRegistrationRepository.deleteByEmail(canonicalEmail);
+            PendingRegistration pending = new PendingRegistration();
+            pending.setEmail(canonicalEmail);
+            pending.setPasswordHash(passwordEncoder.encode(req.getPassword()));
+            pending.setFullName(req.getFullName().trim());
+            pendingRegistrationRepository.save(pending);
+
+            String otpCode = otpService.generateOTP(canonicalEmail, OtpPurpose.REGISTRATION);
+            String body = buildBrandedOtpEmail(
+                    otpCode,
+                    "Verify your email",
+                    """
+                            You're one step away from joining My Property Fact. Enter this code \
+                            to confirm your email and finish creating your account.""");
+            sendEmailHandler.sendEmail(canonicalEmail, "Verify your My Property Fact registration", body);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "OTP sent successfully",
+                    "expiresIn", 300));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("sendRegistrationOtp failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Unable to send OTP. Please try again."));
+        }
+    }
+
+    /**
+     * Mobile registration step 2: OTP must match; creates account with password chosen in step 1.
+     */
+    @Transactional
+    public ResponseEntity<?> verifyRegistrationOtp(RegisterVerifyOtpRequest req,
+            HttpServletResponse response) {
+        try {
+            String canonicalEmail = ConsumerEmailNormalizer.normalize(req.getEmail());
+
+            if (!otpService.verifyOTP(canonicalEmail, req.getOtp(), OtpPurpose.REGISTRATION)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", "Incorrect OTP. Registration failed."));
+            }
+
+            PendingRegistration pending = pendingRegistrationRepository.findByEmail(canonicalEmail)
+                    .orElse(null);
+            if (pending == null || pending.getExpiresAt().before(new Date())) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message",
+                        "Registration session expired. Please enter your details again and request a new OTP."));
+            }
+
+            User registeredUser = authenticationService.finalizeMobileRegistrationWithEncodedPassword(
+                    canonicalEmail, pending.getPasswordHash(), pending.getFullName());
+            pendingRegistrationRepository.deleteByEmail(canonicalEmail);
+
+            String jwtToken = jwtService.generateToken(registeredUser);
+            String refreshToken = jwtService.generateRefreshToken(registeredUser);
+            response.addHeader("Set-Cookie",
+                    buildAuthCookie("token", jwtToken, accessTokenExpiration / 1000).toString());
+            response.addHeader("Set-Cookie",
+                    buildAuthCookie("refreshToken", refreshToken, refreshTokenExpiration / 1000).toString());
+
+            LoginResponse loginResponse = new LoginResponse();
+            loginResponse.setToken(jwtToken);
+            loginResponse.setRefreshToken(refreshToken);
+            loginResponse.setExpiresIn(jwtService.getExpirationTime());
+            loginResponse.setUser(registeredUser);
+            return ResponseEntity.ok(loginResponse);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        } catch (Exception e) {
+            log.error("verifyRegistrationOtp failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Registration failed. Please try again."));
+        }
+    }
+
+    /**
+     * Forgot password step 1: email must exist or returns {@code Email ID does not exist.}
+     */
+    public ResponseEntity<?> forgotPasswordSendOtp(ForgotPasswordRequest body) {
+        try {
+            String raw = body.getEmail();
+            if (raw == null || raw.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Email is required."));
+            }
+            String canonicalEmail = ConsumerEmailNormalizer.normalize(raw);
+
+            if (userRepository.findByEmailIgnoreCase(canonicalEmail).isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("message", "Email ID does not exist."));
+            }
+
+            String otpCode = otpService.generateOTP(canonicalEmail, OtpPurpose.PASSWORD_RESET);
+            String html = buildBrandedOtpEmail(
+                    otpCode,
+                    "Reset your password",
+                    """
+                            We received a request to reset your password. Enter this code to verify \
+                            it's you before choosing a new password.<br><br>\
+                            If you didn't ask for this, you can ignore this email.""");
+            sendEmailHandler.sendEmail(canonicalEmail, "Reset your My Property Fact password", html);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "OTP sent successfully",
+                    "expiresIn", 300));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("forgotPasswordSendOtp failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Unable to send OTP. Please try again."));
+        }
+    }
+
+    /**
+     * Forgot password step 2: verify OTP then set new password.
+     */
+    @Transactional
+    public ResponseEntity<?> forgotPasswordCompleteWithOtp(ForgotPasswordOtpCompleteRequest body) {
+        try {
+            String canonicalEmail = ConsumerEmailNormalizer.normalize(body.getEmail());
+
+            if (!otpService.verifyOTP(canonicalEmail, body.getOtp(), OtpPurpose.PASSWORD_RESET)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", "Incorrect or expired OTP. Please request a new OTP."));
+            }
+
+            User user = userRepository.findByEmailIgnoreCase(canonicalEmail).orElseThrow();
+            authenticationService.replaceConsumerPassword(user, body.getNewPassword());
+
+            return ResponseEntity.ok(Map.of(
+                    "ok", true,
+                    "message", "Password updated successfully. You can sign in with your new password."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("forgotPasswordCompleteWithOtp failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Unable to reset password. Please try again."));
+        }
+    }
+
+    /**
+     * HTML email for consumer OTP flows — table layout for broader client support, branded header + OTP pill.
+     *
+     * @param headline main title inside the white card (not the masthead)
+     * @param introHtml paragraph after “Hello,” — may contain {@code <br>}
+     */
+    private static String buildBrandedOtpEmail(String otpCode, String headline, String introHtml) {
+        return """
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>My Property Fact</title>
+                </head>
+                <body style="margin:0;padding:0;background-color:#f1f5f9;-webkit-font-smoothing:antialiased;">
+                <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0" \
+                style="background-color:#f1f5f9;">
+                  <tr>
+                    <td align="center" style="padding:32px 16px;">
+                      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" \
+                      style="max-width:600px;width:100%%;background:#ffffff;border-radius:16px;\
+                      overflow:hidden;box-shadow:0 12px 40px rgba(15,23,42,0.08);border:1px solid #e2e8f0;">
+                        <tr>
+                          <td style="background:linear-gradient(135deg,#1e3a8a 0%%,#2563eb 50%%,#3b82f6 100%%);\
+                          padding:28px 28px;text-align:center;">
+                            <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;\
+                            font-weight:700;color:#ffffff;letter-spacing:0.02em;line-height:1.2;\
+                            margin:0;">My Property Fact</div>
+                            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,\
+                            Helvetica,Arial,sans-serif;font-size:13px;color:rgba(255,255,255,0.88);\
+                            margin-top:8px;line-height:1.4;">Smart real estate decisions</div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding:36px 32px 28px;\
+                          font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,\
+                          Helvetica,Arial,sans-serif;">
+                            <h1 style="margin:0 0 14px;font-size:21px;line-height:1.35;\
+                            font-weight:700;color:#0f172a;">%s</h1>
+                            <p style="margin:0 0 22px;font-size:15px;line-height:1.65;color:#475569;">
+                              Hello,<br><br>%s
+                            </p>
+                            <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0">
+                              <tr>
+                                <td align="center" style="padding:22px 18px;\
+                                background:linear-gradient(180deg,#f8fafc 0%%,#f1f5f9 100%%);\
+                                border-radius:14px;border:1px solid #e2e8f0;">
+                                  <div style="font-size:11px;font-weight:700;color:#64748b;\
+                                  text-transform:uppercase;letter-spacing:0.14em;margin-bottom:12px;">\
+                                  Verification code</div>
+                                  <div style="font-family:'SF Mono','Courier New',Consolas,monospace;\
+                                  font-size:34px;font-weight:700;color:#0f172a;letter-spacing:10px;\
+                                  line-height:1.2;">%s</div>
+                                </td>
+                              </tr>
+                            </table>
+                            <p style="margin:22px 0 0;font-size:13px;line-height:1.65;color:#64748b;">
+                              This code expires in <strong style="color:#334155;">5 minutes</strong>. \
+                              Never share it — My Property Fact staff will never ask for your OTP.
+                            </p>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding:22px 32px 28px;background:#f8fafc;\
+                          border-top:1px solid #e2e8f0;\
+                          font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,\
+                          Helvetica,Arial,sans-serif;font-size:12px;color:#94a3b8;text-align:center;\
+                          line-height:1.55;">
+                            <div style="margin-bottom:10px;color:#64748b;">
+                              <a href="https://mypropertyfact.in" style="color:#2563eb;\
+                              text-decoration:none;font-weight:600;">mypropertyfact.in</a>
+                              &nbsp;·&nbsp;
+                              Questions? Reply to this email or contact support via our website.
+                            </div>
+                            <div style="font-size:11px;color:#cbd5e1;">© My Property Fact · \
+                            This is an automated security message.</div>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+                </body>
+                </html>
+                """.formatted(headline, introHtml, otpCode);
+    }
+
 
     public ResponseEntity<?> session(Authentication authentication, HttpServletRequest request) {
-        if (authentication == null) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         String expiresAt = jwtService.getExpiryFromCookie(request);
@@ -600,20 +794,16 @@ public class AuthHubDelegate {
                 .toList();
 
         Map<String, Object> body = new HashMap<>();
-        body.put("email", authentication.getName());
+        body.put("email", user.getEmail());
         body.put("roles", roles);
         body.put("expiresAt", expiresAt);
-
-        userRepository.findByEmail(authentication.getName())
-                .ifPresent(user -> {
-                    body.put("userId", user.getId());
-                    body.put("fullName", user.getFullName());
-                    body.put("dashboardUsername", user.getDashboardUsername());
-                    body.put("permissions",
-                            user.getAdminPermissions() != null
-                                    ? new ArrayList<>(user.getAdminPermissions())
-                                    : new ArrayList<String>());
-                });
+        body.put("userId", user.getId());
+        body.put("fullName", user.getFullName());
+        body.put("dashboardUsername", user.getDashboardUsername());
+        body.put("permissions",
+                user.getAdminPermissions() != null
+                        ? new ArrayList<>(user.getAdminPermissions())
+                        : new ArrayList<String>());
 
         return ResponseEntity.ok(body);
     }

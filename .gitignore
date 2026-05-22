@@ -35,3 +35,4 @@ application-dev.properties
 application-prod.properties
 # Mobile auth notes — kept locally; not shipped in repo
 /docs/MOBILE_AUTH_API.md
+/docs/mobile-auth
