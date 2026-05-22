@@ -128,30 +128,20 @@ public class AuthHubDelegate {
         }
     }
 
-    /** Role list + whether PIN is required (see {@code app.admin.registration-pin}). */
+    /** Public self-registration is disabled; Super Admin creates users from Manage Users. */
     public ResponseEntity<Map<String, Object>> adminRegisterMeta() {
-        return ResponseEntity.ok(authenticationService.getAdminRegisterMeta());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of(
+                        "message",
+                        "Public registration is disabled. Ask your Super Administrator to create your account."));
     }
 
-    /**
-     * Self-registration from /admin/register. Defaults to USER only when {@code roleIds} is omitted.
-     * Optional ADMIN requires dashboard username. SUPERADMIN is not allowed.
-     */
-    public ResponseEntity<?> adminRegister( AdminPortalRegisterRequest body) {
-        try {
-            User user = authenticationService.registerAdminPortalUser(body);
-            String message =
-                    "Account created. Your registration is pending approval by a Super Administrator. "
-                            + "You cannot sign in until your account has been activated.";
-            return ResponseEntity.ok(Map.of(
-                    "message", message,
-                    "email", user.getEmail(),
-                    "pendingApproval", true,
-                    "pendingAdminApproval", true));
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("message", ex.getMessage()));
-        }
+    /** Public self-registration is disabled; Super Admin creates users from Manage Users. */
+    public ResponseEntity<?> adminRegister(AdminPortalRegisterRequest body) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of(
+                        "message",
+                        "Public registration is disabled. Ask your Super Administrator to create your account."));
     }
 
     /**

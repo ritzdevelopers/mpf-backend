@@ -1,7 +1,11 @@
 package com.mypropertyfact.estate.services;
 
+import com.mypropertyfact.estate.dtos.CreateUserBySuperAdminResponse;
+import com.mypropertyfact.estate.dtos.SuperAdminCreateUserRequest;
+import com.mypropertyfact.estate.entities.MasterRole;
 import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.repositories.AdminPasswordResetRequestRepository;
+import com.mypropertyfact.estate.repositories.MasterRoleRepository;
 import com.mypropertyfact.estate.repositories.PropertyListingRepository;
 import com.mypropertyfact.estate.repositories.UserRepository;
 import com.mypropertyfact.estate.security.AdminPermissionKeys;
@@ -10,13 +14,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class UserService{
     private final UserRepository userRepository;
+    private final MasterRoleRepository masterRoleRepository;
     private final PasswordEncoder passwordEncoder;
     private final AdminPermissionService adminPermissionService;
     private final UserRoleService userRoleService;
@@ -35,6 +43,139 @@ public class UserService{
 
     public Optional<User> findById(Integer id) {
         return userRepository.findById(id);
+    }
+
+    /**
+     * Super Admin creates a dashboard user (pre-approved, no public /admin/register).
+     */
+    @Transactional
+    public CreateUserBySuperAdminResponse createUserBySuperAdmin(SuperAdminCreateUserRequest req) {
+        if (!currentActorIsSuperAdmin()) {
+            throw new IllegalArgumentException("Only Super Admin can create users.");
+        }
+
+        String email = req.getEmail() != null ? req.getEmail().trim() : "";
+        if (email.isEmpty()) {
+            throw new IllegalArgumentException("Email is required.");
+        }
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new IllegalArgumentException(
+                    "An account with this email already exists.");
+        }
+
+        Set<MasterRole> roles = new HashSet<>();
+        boolean hasAdmin = false;
+
+        List<Integer> ids = req.getRoleIds();
+        if (ids == null || ids.isEmpty()) {
+            addDefaultUserRole(roles);
+        } else {
+            Set<Integer> seen = new HashSet<>();
+            for (Integer rid : ids) {
+                if (rid == null || !seen.add(rid)) {
+                    continue;
+                }
+                MasterRole r = masterRoleRepository.findById(rid)
+                        .orElseThrow(() -> new IllegalArgumentException("Invalid role selected."));
+                if (!Boolean.TRUE.equals(r.getIsActive())) {
+                    throw new IllegalArgumentException("Invalid role selected.");
+                }
+                String n = r.getRoleName();
+                if (n == null) {
+                    continue;
+                }
+                if ("SUPERADMIN".equalsIgnoreCase(n)) {
+                    throw new IllegalArgumentException("Super Admin cannot be created from this form.");
+                }
+                if (!"USER".equalsIgnoreCase(n) && !"ADMIN".equalsIgnoreCase(n)) {
+                    throw new IllegalArgumentException("Only USER and ADMIN roles are allowed here.");
+                }
+                if ("ADMIN".equalsIgnoreCase(n)) {
+                    hasAdmin = true;
+                }
+                roles.add(r);
+            }
+            if (roles.isEmpty()) {
+                addDefaultUserRole(roles);
+            } else if (!roles.stream().anyMatch(r -> r.getRoleName() != null
+                    && "USER".equalsIgnoreCase(r.getRoleName()))) {
+                addDefaultUserRole(roles);
+            }
+            hasAdmin = roles.stream().anyMatch(r -> r.getRoleName() != null
+                    && "ADMIN".equalsIgnoreCase(r.getRoleName()));
+        }
+
+        String dash = req.getDashboardUsername() != null ? req.getDashboardUsername().trim() : "";
+        if (hasAdmin) {
+            if (dash.isEmpty()) {
+                throw new IllegalArgumentException("Dashboard username is required when Admin role is selected.");
+            }
+            if (userRepository.findByDashboardUsername(dash).isPresent()) {
+                throw new IllegalArgumentException("That dashboard username is already taken.");
+            }
+        }
+
+        String fullName = req.getFullName() != null ? req.getFullName().trim() : "";
+        if (fullName.isEmpty()) {
+            fullName = email.contains("@") ? email.substring(0, email.indexOf('@')) : "User";
+        }
+
+        User user = new User();
+        user.setFullName(fullName);
+        user.setEmail(email);
+        user.setPhone(req.getPhone() != null && !req.getPhone().isBlank() ? req.getPhone().trim() : null);
+        user.setPassword(passwordEncoder.encode(req.getPassword()));
+        user.setDashboardUsername(hasAdmin ? dash : (dash.isEmpty() ? null : dash));
+        user.setRoles(roles);
+        user.setEnabled(req.getEnabled() == null || Boolean.TRUE.equals(req.getEnabled()));
+        user.setVerified(req.getVerified() == null || Boolean.TRUE.equals(req.getVerified()));
+        user.setAdminStaffApproved(true);
+        user.setUserCategory(normalizeUserCategory(
+                req.getUserCategory() != null && !req.getUserCategory().isBlank()
+                        ? req.getUserCategory()
+                        : "ADMIN_USER"));
+
+        String enquiryPinPlain = null;
+        if (hasAdmin) {
+            Set<String> perms = adminPermissionService.normalizePermissions(req.getAdminPermissions());
+            user.setAdminPermissions(perms);
+            boolean wantsEnquiry = perms.stream()
+                    .anyMatch(p -> p != null
+                            && AdminPermissionKeys.MANAGE_ENQUIRIES.equalsIgnoreCase(p.trim()));
+            if (wantsEnquiry) {
+                String rawPin = req.getEnquiryAccessPin() != null ? req.getEnquiryAccessPin().trim() : "";
+                if (!rawPin.matches("\\d{4}")) {
+                    throw new IllegalArgumentException(
+                            "Set a 4-digit enquiries access code when Manage enquiries is enabled.");
+                }
+                user.setEnquiryAccessPinHash(passwordEncoder.encode(rawPin));
+                enquiryPinPlain = rawPin;
+            }
+        } else {
+            user.setAdminPermissions(new HashSet<>());
+        }
+
+        User saved = userRepository.save(user);
+        List<String> roleNames = roles.stream()
+                .map(MasterRole::getRoleName)
+                .filter(n -> n != null && !n.isBlank())
+                .sorted()
+                .toList();
+        return new CreateUserBySuperAdminResponse(
+                saved, req.getPassword(), enquiryPinPlain, roleNames);
+    }
+
+    private void addDefaultUserRole(Set<MasterRole> roles) {
+        masterRoleRepository.findByRoleNameIgnoreCase("USER")
+                .ifPresentOrElse(
+                        roles::add,
+                        () -> {
+                            MasterRole userRole = new MasterRole();
+                            userRole.setRoleName("USER");
+                            userRole.setDescription("Default user role");
+                            userRole.setIsActive(true);
+                            roles.add(masterRoleRepository.save(userRole));
+                        });
     }
 
     public User updateUser(Integer id, User updatedUser) {

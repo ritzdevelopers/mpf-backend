@@ -1,8 +1,10 @@
 package com.mypropertyfact.estate.controllers;
 
 import com.mypropertyfact.estate.dtos.AdminSetPasswordRequest;
+import com.mypropertyfact.estate.dtos.CreateUserBySuperAdminResponse;
 import com.mypropertyfact.estate.dtos.PendingPermissionsCountResponse;
 import com.mypropertyfact.estate.dtos.PendingPermissionsResponse;
+import com.mypropertyfact.estate.dtos.SuperAdminCreateUserRequest;
 import com.mypropertyfact.estate.dtos.SuperAdminPasswordResetDecisionRequest;
 import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.services.AdminPasswordResetRequestService;
@@ -103,6 +105,25 @@ public class UserController {
     public ResponseEntity<List<User>> allUsers() {
         List <User> users = userService.allUsers();
         return ResponseEntity.ok(users);
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<?> createUser(@Valid @RequestBody SuperAdminCreateUserRequest request) {
+        try {
+            CreateUserBySuperAdminResponse created = userService.createUserBySuperAdmin(request);
+            User u = created.getUser();
+            return ResponseEntity.ok(Map.of(
+                    "message", "User created successfully.",
+                    "user", u,
+                    "password", created.getPassword(),
+                    "enquiryAccessPin", created.getEnquiryAccessPin() != null
+                            ? created.getEnquiryAccessPin()
+                            : "",
+                    "roleNames", created.getRoleNames()));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", ex.getMessage()));
+        }
     }
 
     @GetMapping("/pending-permissions")

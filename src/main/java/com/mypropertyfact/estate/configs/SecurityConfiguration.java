@@ -69,6 +69,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/user/**").authenticated()
                         .requestMatchers("/api/v1/users/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("SUPERADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/users").hasRole("SUPERADMIN")
                         .requestMatchers("/api/v1/users/**").hasRole("SUPERADMIN")
                         .requestMatchers("/api/v1/auth/session").authenticated()
                         .requestMatchers("/api/v1/app/auth/session").authenticated()
