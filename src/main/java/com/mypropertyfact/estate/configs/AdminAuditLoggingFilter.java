@@ -139,7 +139,8 @@ public class AdminAuditLoggingFilter extends OncePerRequestFilter {
                 || path.startsWith("/api/v1/admin/management/activities")
                 || path.startsWith("/api/v1/admin/dashboard/site-traffic-trends")
                 || path.startsWith("/api/v1/admin/dashboard/site-traffic-live")
-                || path.startsWith("/api/v1/admin/dashboard/site-traffic-today");
+                || path.startsWith("/api/v1/admin/dashboard/site-traffic-today")
+                || path.startsWith("/api/v1/admin/super/backup/status");
     }
 
     /**
