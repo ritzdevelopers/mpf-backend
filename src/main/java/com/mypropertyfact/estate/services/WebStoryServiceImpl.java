@@ -23,6 +23,10 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class WebStoryServiceImpl implements WebStoryService {
+  //fixed meta tags for all web stories
+    private static final String FIXED_META_ROBOTS = "INDEX, FOLLOW";
+    private static final String FIXED_META_AUTHOR = "My Property Fact";
+    private static final String FIXED_META_PUBLISHER = "My Property Fact";
 
     private final WebStoryRepository webStoryRepository;
 
@@ -134,6 +138,16 @@ public class WebStoryServiceImpl implements WebStoryService {
         List<WebStory> storyPages = new ArrayList<>();
         String categoryTitle = "Web Story"; // fallback title
         StringBuilder metaTags = new StringBuilder();
+//author, publisher and robots tags are fixed for all web stories
+        metaTags.append("      <meta name=\"author\" content=\"")
+                .append(HtmlUtils.htmlEscape(FIXED_META_AUTHOR))
+                .append("\">\n");
+        metaTags.append("      <meta name=\"publisher\" content=\"")
+                .append(HtmlUtils.htmlEscape(FIXED_META_PUBLISHER))
+                .append("\">\n");
+        metaTags.append("      <meta name=\"robots\" content=\"")
+                .append(HtmlUtils.htmlEscape(FIXED_META_ROBOTS))
+                .append("\">\n");
 
         if (webStoryCategory.isPresent()) {
             WebStoryCategory category = webStoryCategory.get();
@@ -279,7 +293,7 @@ public class WebStoryServiceImpl implements WebStoryService {
                 
                     </head>
                     <body lang="en-IN">
-                      <amp-story standalone title="%1$s" publisher="You" lang="en-IN"
+                      <amp-story standalone title="%1$s" publisher="%5$s" lang="en-IN"
                         publisher-logo-src="https://mypropertyfact.in/logo.webp"
                         poster-portrait-src="https://mypropertyfact.in/logo.webp">
                         %2$s
@@ -290,6 +304,7 @@ public class WebStoryServiceImpl implements WebStoryService {
                 categoryTitle,
                 storyContent.toString(),
                 metaTags.toString(),
-                canonicalEscaped);
+                canonicalEscaped,
+                HtmlUtils.htmlEscape(FIXED_META_PUBLISHER)); //add for meta publisher robot tag, author and publisher
     }
 }
