@@ -39,7 +39,8 @@ public class WebStoryServiceImpl implements WebStoryService {
     private String baseUrl;
 
     /** Public UI origin; canonical is {base}/stories/{categorySlug}. Falls back for local/dev startup safety. */
-    @Value("${web.story.canonical-base-url:https://mypropertyfact.in}")
+    @Value("${web.story.canonical-base-url:https://apis.mypropertyfact.in}")
+    // @Value("${web.story.canonical-base-url:https://mypropertyfact.in}")
     private String webStoryCanonicalBaseUrl;
 
     @Override
@@ -165,13 +166,13 @@ public class WebStoryServiceImpl implements WebStoryService {
             storyContent.append("""
                       <amp-story-page id="page%1$d" auto-advance-after="7s">
                         <amp-story-grid-layer template="fill">
-                          <amp-img src="%2$s" layout="fill" object-fit="cover" alt=""></amp-img>
+                          <amp-img src="%2$s" layout="fill" object-fit="cover" alt="%3$s" title="%3$s"></amp-img>
                         </amp-story-grid-layer>
                     
                         <!-- Logo Layer -->
                         <amp-story-grid-layer template="vertical" class="logo-layer">
-                          <a href="https://mypropertyfact.in/" target="_blank">
-                            <amp-img src="https://mypropertyfact.in/logo.webp" width="60" height="60" layout="fixed" alt="Logo"></amp-img>
+                          <a href="https://mypropertyfact.in/" target="_blank" title="My Property Fact">
+                            <amp-img src="https://mypropertyfact.in/logo.webp" width="60" height="60" layout="fixed" alt="My Property Fact logo" title="My Property Fact logo"></amp-img>
                           </a>
                         </amp-story-grid-layer>
                     
@@ -194,9 +195,11 @@ public class WebStoryServiceImpl implements WebStoryService {
 
         String canonicalBase = webStoryCanonicalBaseUrl == null ? "" : webStoryCanonicalBaseUrl.trim().replaceAll("/+$", "");
         if (canonicalBase.isBlank()) {
-            canonicalBase = "https://mypropertyfact.in";
+          // canonicalBase = "https://mypropertyfact.in";
+            canonicalBase = "https://apis.mypropertyfact.in";
         }
-        String canonicalHref = canonicalBase + "/stories/" + slug;
+        // String canonicalHref = canonicalBase + "/stories/" + slug;
+        String canonicalHref = canonicalBase + "/api/v1/web-story/" + slug;
         String canonicalEscaped = HtmlUtils.htmlEscape(canonicalHref);
 
         return """
