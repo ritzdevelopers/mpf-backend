@@ -180,7 +180,7 @@ public class WebStoryServiceImpl implements WebStoryService {
             storyContent.append("""
                       <amp-story-page id="page%1$d" auto-advance-after="7s">
                         <amp-story-grid-layer template="fill">
-                          <amp-img src="%2$s" layout="fill" object-fit="cover" alt="%3$s" title="%3$s"></amp-img>
+                          <amp-img src="%2$s" layout="fill" object-fit="cover" alt="%4$s" title="%4$s"></amp-img>
                         </amp-story-grid-layer>
                     
                         <!-- Logo Layer -->
