@@ -43,8 +43,8 @@ public class WebStoryServiceImpl implements WebStoryService {
     private String baseUrl;
 
     /** Public UI origin; canonical is {base}/stories/{categorySlug}. Falls back for local/dev startup safety. */
-    @Value("${web.story.canonical-base-url:https://apis.mypropertyfact.in}")
-    // @Value("${web.story.canonical-base-url:https://mypropertyfact.in}")
+    //@Value("${web.story.canonical-base-url:https://apis.mypropertyfact.in}")
+     @Value("${web.story.canonical-base-url:https://mypropertyfact.in}")
     private String webStoryCanonicalBaseUrl;
 
     @Override
@@ -209,8 +209,8 @@ public class WebStoryServiceImpl implements WebStoryService {
 
         String canonicalBase = webStoryCanonicalBaseUrl == null ? "" : webStoryCanonicalBaseUrl.trim().replaceAll("/+$", "");
         if (canonicalBase.isBlank()) {
-          // canonicalBase = "https://mypropertyfact.in";
-            canonicalBase = "https://apis.mypropertyfact.in";
+          canonicalBase = "https://mypropertyfact.in";
+            //canonicalBase = "https://apis.mypropertyfact.in";
         }
         // String canonicalHref = canonicalBase + "/stories/" + slug;
         String canonicalHref = canonicalBase + "/api/v1/web-story/" + slug;
