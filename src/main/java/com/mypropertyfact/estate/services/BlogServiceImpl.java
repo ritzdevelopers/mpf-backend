@@ -92,7 +92,7 @@ public class BlogServiceImpl implements BlogService {
             if(!existing.getSlugUrl().equals(blogDto.getSlugUrl())){
                 existing.setSlugUrl(blogDto.getSlugUrl());
             }
-            existing.setStatus(blogDto.getStatus());
+            // Status is managed via /blog/update-status toggle — preserve on content edits.
             existing.setBlogKeywords(blogDto.getBlogKeywords());
             existing.setAuthorName(blogDto.getAuthorName());
             blogCategory.ifPresent(existing::setBlogCategory);
@@ -119,7 +119,7 @@ public class BlogServiceImpl implements BlogService {
         blog.setBlogTitle(blogDto.getBlogTitle());
         blog.setBlogDescription(blogDto.getBlogDescription());
         blog.setSlugUrl(blogDto.getSlugUrl());
-        blog.setStatus(blogDto.getStatus());
+        blog.setStatus(1);
         blog.setBlogKeywords(blogDto.getBlogKeywords());
         blog.setAuthorName(blogDto.getAuthorName());
         blog.setBlogMetaDescription(blogDto.getBlogMetaDescription());
@@ -164,6 +164,9 @@ public class BlogServiceImpl implements BlogService {
 
     public BlogDto getBySlug(String slug) {
         Blog bySlugUrl = blogRepository.findBySlugUrl(slug);
+        if (bySlugUrl == null || bySlugUrl.getStatus() != 1) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found");
+        }
         return new BlogDto(bySlugUrl.getId(),
                 bySlugUrl.getBlogTitle(),
                 bySlugUrl.getBlogKeywords(),
@@ -183,8 +186,11 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     public Page<BlogDto> getWithPagination(int page, int size, String from, String search) {
-        // Step 1: Fetch all blogs (no pagination)
-        List<Blog> allBlogs = blogRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+        // Public listing: active blogs only (status = 1)
+        List<Blog> allBlogs = blogRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
+                .stream()
+                .filter(blog -> blog.getStatus() == 1)
+                .toList();
 
         // Step 2: Map to DTOs
         List<BlogDto> dtoList = allBlogs.stream().map(blog -> {
@@ -233,5 +239,19 @@ public class BlogServiceImpl implements BlogService {
         fileUtils.deleteFileFromDestination(blog.getBlogImage(), upload_dir + "blog/");
         blogRepository.delete(blog);
         return new Response(1, "Blog deleted successful...", 0);
+    }
+
+    @Override
+    public Response updateBlogStatus(int id, int status) {
+        Blog blog = blogRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
+        int normalized = status == 1 ? 1 : 0;
+        blog.setStatus(normalized);
+        blogRepository.save(blog);
+        adminDashboardActivityService.recordForCurrentUser(
+                AdminDashboardActivityService.TASK_BLOG,
+                (normalized == 1 ? "Activated" : "Deactivated") + " blog: " + blog.getBlogTitle(),
+                "/admin/dashboard/manage-blogs");
+        return new Response(1, normalized == 1 ? "Blog is now active" : "Blog is now inactive", 0);
     }
 }

@@ -35,11 +35,20 @@ public class BlogController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Blog> getOne(@PathVariable int id) {
-        return blogService.getBlogById(id)
-                .map(ResponseEntity::ok)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
+    @PutMapping("/{id}/status")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_BLOGS')")
+    public ResponseEntity<Response> updateStatus(
+            @PathVariable int id,
+            @RequestParam int status) {
+        return ResponseEntity.ok(blogService.updateBlogStatus(id, status));
+    }
+
+    @PostMapping("/update-status")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_BLOGS')")
+    public ResponseEntity<Response> updateStatusPost(
+            @RequestParam int id,
+            @RequestParam int status) {
+        return ResponseEntity.ok(blogService.updateBlogStatus(id, status));
     }
 
     @GetMapping("/get-all")
@@ -60,6 +69,13 @@ public class BlogController {
             @RequestParam(required = false) String search
     ){
         return blogService.getWithPagination(page, size, from, search);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Blog> getOne(@PathVariable int id) {
+        return blogService.getBlogById(id)
+                .map(ResponseEntity::ok)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
     }
 }
 

@@ -47,8 +47,8 @@ public class Blog {
 
     @Min(value = 0, message = "Status must be at least 0")
     @Max(value = 1, message = "Status must be at most 1")
-    @Column(name = "status")
-    private int status;
+    @Column(name = "status", nullable = false)
+    private int status = 1;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -65,6 +65,7 @@ public class Blog {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+        this.status = 1;
     }
 
     @ManyToOne

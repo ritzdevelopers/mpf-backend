@@ -21,4 +21,5 @@ public interface BlogRepository extends JpaRepository<Blog, Integer> {
     @Query("SELECT b FROM Blog b")
     List<Blog> findAllWithBlogCategory();
 
+    long countByStatus(int status);
 }
