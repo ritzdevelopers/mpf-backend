@@ -194,4 +194,20 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
         """)
     Optional<ProjectFullDetails> findProjectFullDetails(@Param("slug") String slug);
 
+    @Query("""
+            SELECT p FROM Project p
+            LEFT JOIN FETCH p.city c
+            LEFT JOIN FETCH c.state
+            WHERE p.id IN :ids
+            """)
+    List<Project> findAllWithCityStateByIdIn(@Param("ids") List<Integer> ids);
+
+    @Query("""
+            SELECT p FROM Project p
+            LEFT JOIN FETCH p.city c
+            LEFT JOIN FETCH c.state
+            WHERE p.slugURL IN :slugs
+            """)
+    List<Project> findAllWithCityStateBySlugIn(@Param("slugs") List<String> slugs);
+
 }

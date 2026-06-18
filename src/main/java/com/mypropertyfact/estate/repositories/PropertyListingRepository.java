@@ -104,4 +104,12 @@ public interface PropertyListingRepository extends JpaRepository<PropertyListing
             ORDER BY pi.displayOrder ASC
             """)
     List<PropertyListingImagesDto> findByPropertyListingId(Long propertyListingId);
+
+    @Query("""
+            SELECT pl FROM PropertyListing pl
+            LEFT JOIN FETCH pl.city c
+            LEFT JOIN FETCH c.state
+            WHERE pl.id IN :ids
+            """)
+    List<PropertyListing> findAllWithCityStateByIdIn(@Param("ids") List<Long> ids);
 }
