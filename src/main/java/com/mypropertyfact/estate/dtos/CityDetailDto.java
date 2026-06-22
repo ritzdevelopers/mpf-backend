@@ -22,6 +22,10 @@ public class CityDetailDto {
     private String countryName;
     private String cityDescription;
     private String cityImage;
+    private String monumentName;
+    private String monumentImage;
+    private String cityHighlights;
+    private Boolean isActive;
     private String slugURL;
     private List<ProjectShortDetails> projectList;
     private List<LocalityShortDto> localities;

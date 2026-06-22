@@ -30,6 +30,18 @@ public class CityController {
         return new ResponseEntity<>(this.cityService.postNewCity(cityDto), HttpStatus.CREATED);
     }
 
+    @PostMapping("/save")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
+    public ResponseEntity<Response> saveCityWithImage(
+            @RequestParam(value = "monumentImageFile", required = false) MultipartFile monumentImageFile,
+            @ModelAttribute CityDto cityDto) {
+        Response response = cityService.saveCityWithImage(cityDto, monumentImageFile);
+        if (response.getIsSuccess() == 1) {
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
     @DeleteMapping("/delete/{id}")
     @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<?> deleteCity(@PathVariable("id") int id) {

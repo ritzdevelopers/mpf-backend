@@ -263,11 +263,18 @@ public class CommonMapper {
 
     public void mapCityToCityDto(City city, CityDto cityDto) {
         city.setName(cityDto.getCityName());
-        city.setSlugUrl(cityDto.getSlugURL());
+        if (cityDto.getSlugURL() != null && !cityDto.getSlugURL().isBlank()) {
+            city.setSlugUrl(cityDto.getSlugURL().trim());
+        }
         city.setMetaTitle(cityDto.getMetaTitle());
         city.setMetaKeyWords(cityDto.getMetaKeywords());
         city.setMetaDescription(cityDto.getMetaDescription());
         city.setCityDisc(cityDto.getCityDescription());
+        city.setMonumentName(cityDto.getMonumentName());
+        city.setCityHighlights(cityDto.getCityHighlights());
+        if (cityDto.getIsActive() != null) {
+            city.setIsActive(cityDto.getIsActive());
+        }
     }
 
     public void mapCityDtoToCity(CityDto cityDto, City city) {
@@ -278,6 +285,10 @@ public class CommonMapper {
         cityDto.setMetaKeywords(city.getMetaKeyWords());
         cityDto.setMetaDescription(city.getMetaDescription());
         cityDto.setCityDescription(city.getCityDisc());
+        cityDto.setMonumentName(city.getMonumentName());
+        cityDto.setMonumentImage(city.getMonumentImage());
+        cityDto.setCityHighlights(city.getCityHighlights());
+        cityDto.setIsActive(city.getIsActive() == null || city.getIsActive());
     }
 
     public void mapShortProjectDetails(Project project, ProjectShortDetails projectShortDetails) {

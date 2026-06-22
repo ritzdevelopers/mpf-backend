@@ -26,6 +26,11 @@ public class City {
     @Lob
     private String cityDisc;
     private String cityImage;
+    private String monumentName;
+    private String monumentImage;
+    @Lob
+    private String cityHighlights;
+    private Boolean isActive = true;
     private Double latitude;
     private Double longitude;
     private Integer pinCode;
