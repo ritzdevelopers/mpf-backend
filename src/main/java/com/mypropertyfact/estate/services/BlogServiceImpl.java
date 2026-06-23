@@ -6,6 +6,7 @@ import com.mypropertyfact.estate.entities.Blog;
 import com.mypropertyfact.estate.entities.BlogCategory;
 import com.mypropertyfact.estate.entities.City;
 import com.mypropertyfact.estate.interfaces.BlogService;
+import com.mypropertyfact.estate.models.BlogStatus;
 import com.mypropertyfact.estate.models.ResourceNotFoundException;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.repositories.BlogCategoryRepository;
@@ -24,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -101,12 +103,13 @@ public class BlogServiceImpl implements BlogService {
             if (blogImageName != null) {
                 existing.setBlogImage(blogImageName);
             }
+            applyPublicationState(existing, blogDto);
             blogRepository.save(existing);
             adminDashboardActivityService.recordForCurrentUser(
                     AdminDashboardActivityService.TASK_BLOG,
-                    "Updated blog: " + blogDto.getBlogTitle(),
+                    publicationActivityLabel(existing) + " blog: " + blogDto.getBlogTitle(),
                     "/admin/dashboard/manage-blogs");
-            return new Response(1, "Blog updated successfully...", 0);
+            return new Response(1, publicationSuccessMessage(existing), 0);
         }
 
         // Add new blogDto
@@ -119,17 +122,84 @@ public class BlogServiceImpl implements BlogService {
         blog.setBlogTitle(blogDto.getBlogTitle());
         blog.setBlogDescription(blogDto.getBlogDescription());
         blog.setSlugUrl(blogDto.getSlugUrl());
-        blog.setStatus(1);
         blog.setBlogKeywords(blogDto.getBlogKeywords());
         blog.setAuthorName(blogDto.getAuthorName());
         blog.setBlogMetaDescription(blogDto.getBlogMetaDescription());
         blog.setBlogImage(blogImageName);
+        applyPublicationState(blog, blogDto);
         blogRepository.save(blog);
         adminDashboardActivityService.recordForCurrentUser(
                 AdminDashboardActivityService.TASK_BLOG,
-                "Added blog: " + blogDto.getBlogTitle(),
+                publicationActivityLabel(blog) + " blog: " + blogDto.getBlogTitle(),
                 "/admin/dashboard/manage-blogs");
-        return new Response(1, "Blog saved successfully...", 0);
+        return new Response(1, publicationSuccessMessage(blog), 0);
+    }
+
+    private void applyPublicationState(Blog blog, BlogDto blogDto) {
+        int requestedStatus = blogDto.getStatus();
+
+        if (requestedStatus == BlogStatus.DRAFT) {
+            blog.setStatus(BlogStatus.DRAFT);
+            blog.setScheduledPublishAt(null);
+            return;
+        }
+
+        if (requestedStatus == BlogStatus.SCHEDULED) {
+            LocalDateTime scheduledAt = resolveScheduledPublishAt(blogDto.getScheduledPublishAt());
+            if (scheduledAt == null) {
+                throw new IllegalArgumentException("Scheduled publish date and time are required.");
+            }
+            if (!scheduledAt.isAfter(LocalDateTime.now())) {
+                throw new IllegalArgumentException("Scheduled publish time must be in the future.");
+            }
+            blog.setStatus(BlogStatus.SCHEDULED);
+            blog.setScheduledPublishAt(scheduledAt);
+            return;
+        }
+
+        blog.setStatus(BlogStatus.PUBLISHED);
+        blog.setScheduledPublishAt(null);
+    }
+
+    private LocalDateTime resolveScheduledPublishAt(LocalDateTime scheduledPublishAt) {
+        return scheduledPublishAt;
+    }
+
+    private String publicationSuccessMessage(Blog blog) {
+        return switch (blog.getStatus()) {
+            case BlogStatus.DRAFT -> "Blog saved as draft.";
+            case BlogStatus.SCHEDULED -> "Blog scheduled successfully.";
+            default -> "Blog published successfully.";
+        };
+    }
+
+    private String publicationActivityLabel(Blog blog) {
+        return switch (blog.getStatus()) {
+            case BlogStatus.DRAFT -> "Saved draft";
+            case BlogStatus.SCHEDULED -> "Scheduled";
+            default -> "Published";
+        };
+    }
+
+    private BlogDto mapToDto(Blog blog) {
+        BlogDto blogDto = new BlogDto(
+                blog.getId(),
+                blog.getBlogTitle(),
+                blog.getBlogKeywords(),
+                blog.getBlogMetaDescription(),
+                blog.getBlogDescription(),
+                blog.getSlugUrl(),
+                blog.getBlogImage(),
+                blog.getAuthorName(),
+                blog.getBlogCategory() != null ? blog.getBlogCategory().getCategoryName() : null,
+                blog.getStatus(),
+                blog.getBlogCategory() != null ? blog.getBlogCategory().getId() : 0,
+                blog.getCity() != null ? blog.getCity().getId() : 0,
+                blog.getCity() != null ? blog.getCity().getName() : null,
+                blog.getCreatedAt(),
+                blog.getScheduledPublishAt()
+        );
+        return blogDto;
     }
 
     @Override
@@ -142,46 +212,17 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     public List<BlogDto> getAllBlogs() {
-        List<Blog> blogs = blogRepository.findAllWithBlogCategory();
-        return blogs.stream().map(blog ->
-                new BlogDto(blog.getId(),
-                        blog.getBlogTitle(),
-                        blog.getBlogKeywords(),
-                        blog.getBlogMetaDescription(),
-                        blog.getBlogDescription(),
-                        blog.getSlugUrl(),
-                        blog.getBlogImage(),
-                        blog.getAuthorName(),
-                        blog.getBlogCategory() != null ? blog.getBlogCategory().getCategoryName(): null,
-                        blog.getStatus(),
-                        blog.getBlogCategory() != null ?blog.getBlogCategory().getId() : 0,
-                        blog.getCity() != null ? blog.getCity().getId(): 0,
-                        blog.getCity() != null ? blog.getCity().getName(): null,
-                        blog.getCreatedAt()
-                )
-        ).collect(Collectors.toList());
+        return blogRepository.findAllWithBlogCategory().stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
     }
 
     public BlogDto getBySlug(String slug) {
         Blog bySlugUrl = blogRepository.findBySlugUrl(slug);
-        if (bySlugUrl == null || bySlugUrl.getStatus() != 1) {
+        if (bySlugUrl == null || !BlogStatus.isPubliclyVisible(bySlugUrl.getStatus())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found");
         }
-        return new BlogDto(bySlugUrl.getId(),
-                bySlugUrl.getBlogTitle(),
-                bySlugUrl.getBlogKeywords(),
-                bySlugUrl.getBlogMetaDescription(),
-                bySlugUrl.getBlogDescription(),
-                bySlugUrl.getSlugUrl(),
-                bySlugUrl.getBlogImage(),
-                bySlugUrl.getAuthorName(),
-                bySlugUrl.getBlogCategory() != null ? bySlugUrl.getBlogCategory().getCategoryName(): null,
-                bySlugUrl.getStatus(),
-                bySlugUrl.getBlogCategory() != null ? bySlugUrl.getBlogCategory().getId(): 0,
-                bySlugUrl.getCity() != null ? bySlugUrl.getCity().getId(): 0,
-                bySlugUrl.getCity() != null ? bySlugUrl.getCity().getName(): null,
-                bySlugUrl.getCreatedAt()
-        );
+        return mapToDto(bySlugUrl);
     }
 
     @Override
@@ -189,7 +230,7 @@ public class BlogServiceImpl implements BlogService {
         // Public listing: active blogs only (status = 1)
         List<Blog> allBlogs = blogRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
                 .stream()
-                .filter(blog -> blog.getStatus() == 1)
+                .filter(blog -> BlogStatus.isPubliclyVisible(blog.getStatus()))
                 .toList();
 
         // Step 2: Map to DTOs
@@ -245,13 +286,38 @@ public class BlogServiceImpl implements BlogService {
     public Response updateBlogStatus(int id, int status) {
         Blog blog = blogRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
-        int normalized = status == 1 ? 1 : 0;
+
+        if (blog.getStatus() == BlogStatus.DRAFT || blog.getStatus() == BlogStatus.SCHEDULED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Use Publish to make draft or scheduled blogs live.");
+        }
+
+        int normalized = status == BlogStatus.PUBLISHED ? BlogStatus.PUBLISHED : BlogStatus.INACTIVE;
         blog.setStatus(normalized);
+        blog.setScheduledPublishAt(null);
         blogRepository.save(blog);
         adminDashboardActivityService.recordForCurrentUser(
                 AdminDashboardActivityService.TASK_BLOG,
-                (normalized == 1 ? "Activated" : "Deactivated") + " blog: " + blog.getBlogTitle(),
+                (normalized == BlogStatus.PUBLISHED ? "Activated" : "Deactivated") + " blog: " + blog.getBlogTitle(),
                 "/admin/dashboard/manage-blogs");
-        return new Response(1, normalized == 1 ? "Blog is now active" : "Blog is now inactive", 0);
+        return new Response(1, normalized == BlogStatus.PUBLISHED ? "Blog is now active" : "Blog is now inactive", 0);
+    }
+
+    @Override
+    public Response publishBlog(int id) {
+        Blog blog = blogRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
+
+        blog.setStatus(BlogStatus.PUBLISHED);
+        blog.setScheduledPublishAt(null);
+        blogRepository.save(blog);
+
+        adminDashboardActivityService.recordForCurrentUser(
+                AdminDashboardActivityService.TASK_BLOG,
+                "Published blog: " + blog.getBlogTitle(),
+                "/admin/dashboard/manage-blogs");
+
+        return new Response(1, "Blog published successfully.", 0);
     }
 }

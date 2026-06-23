@@ -1,6 +1,7 @@
 package com.mypropertyfact.estate.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.mypropertyfact.estate.models.BlogStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -46,9 +47,12 @@ public class Blog {
     private String authorName;
 
     @Min(value = 0, message = "Status must be at least 0")
-    @Max(value = 1, message = "Status must be at most 1")
+    @Max(value = 3, message = "Status must be at most 3")
     @Column(name = "status", nullable = false)
-    private int status = 1;
+    private int status = BlogStatus.PUBLISHED;
+
+    @Column(name = "scheduled_publish_at")
+    private LocalDateTime scheduledPublishAt;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -65,7 +69,9 @@ public class Blog {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        this.status = 1;
+        if (this.status < BlogStatus.INACTIVE || this.status > BlogStatus.SCHEDULED) {
+            this.status = BlogStatus.PUBLISHED;
+        }
     }
 
     @ManyToOne

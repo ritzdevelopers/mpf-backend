@@ -51,6 +51,12 @@ public class BlogController {
         return ResponseEntity.ok(blogService.updateBlogStatus(id, status));
     }
 
+    @PostMapping("/publish")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_BLOGS')")
+    public ResponseEntity<Response> publishNow(@RequestParam int id) {
+        return ResponseEntity.ok(blogService.publishBlog(id));
+    }
+
     @GetMapping("/get-all")
     public List<BlogDto> getAll() {
         return blogService.getAllBlogs();

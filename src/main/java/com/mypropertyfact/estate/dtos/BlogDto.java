@@ -3,6 +3,7 @@ package com.mypropertyfact.estate.dtos;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDateTime;
 
@@ -24,4 +25,7 @@ public class BlogDto {
     private int cityId;
     private String cityName;
     private LocalDateTime createdAt;
+
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+    private LocalDateTime scheduledPublishAt;
 }
