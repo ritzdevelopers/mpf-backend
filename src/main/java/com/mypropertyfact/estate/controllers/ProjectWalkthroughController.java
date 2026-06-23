@@ -22,6 +22,15 @@ public class ProjectWalkthroughController {
     public ResponseEntity<List<ProjectWalkthroughDto>> getAllWalkthrough(){
         return new ResponseEntity<>(this.projectWalkthroughService.getAllWalkthrough(), HttpStatus.OK);
     }
+
+    @GetMapping("/get/{id}")
+    public ResponseEntity<ProjectWalkthroughDto> getWalkthroughById(@PathVariable("id") int id){
+        ProjectWalkthroughDto walkthrough = this.projectWalkthroughService.getWalkthroughById(id);
+        if (walkthrough == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        return new ResponseEntity<>(walkthrough, HttpStatus.OK);
+    }
     @PostMapping("/add-update")
     public ResponseEntity<Response> addUpdate(@RequestBody ProjectWalkthroughDto projectWalkthroughDto){
         return new ResponseEntity<>(this.projectWalkthroughService.addUpdate(projectWalkthroughDto), HttpStatus.OK);

@@ -24,17 +24,49 @@ public class ProjectWalkthroughService {
         return allWalkthrough.stream().map(walkthrough-> {
             ProjectWalkthroughDto projectWalkthroughDto = new ProjectWalkthroughDto();
             projectWalkthroughDto.setId(walkthrough.getId());
-            projectWalkthroughDto.setProjectId(walkthrough.getProject().getId());
-            projectWalkthroughDto.setProjectName(walkthrough.getProject().getProjectName());
-            projectWalkthroughDto.setWalkthroughDesc(walkthrough.getWalkthroughDesc());
+            if (walkthrough.getProject() != null) {
+                projectWalkthroughDto.setProjectId(walkthrough.getProject().getId());
+                projectWalkthroughDto.setProjectName(walkthrough.getProject().getProjectName());
+            }
+            projectWalkthroughDto.setWalkthroughDesc(buildWalkthroughPreview(walkthrough.getWalkthroughDesc()));
             return projectWalkthroughDto;
         }).toList();
+    }
+
+    public ProjectWalkthroughDto getWalkthroughById(int id) {
+        return projectWalkthroughRepository.findById(id)
+                .map(this::mapToDto)
+                .orElse(null);
+    }
+
+    private ProjectWalkthroughDto mapToDto(ProjectWalkthrough walkthrough) {
+        ProjectWalkthroughDto projectWalkthroughDto = new ProjectWalkthroughDto();
+        projectWalkthroughDto.setId(walkthrough.getId());
+        if (walkthrough.getProject() != null) {
+            projectWalkthroughDto.setProjectId(walkthrough.getProject().getId());
+            projectWalkthroughDto.setProjectName(walkthrough.getProject().getProjectName());
+        }
+        projectWalkthroughDto.setWalkthroughDesc(walkthrough.getWalkthroughDesc());
+        projectWalkthroughDto.setWalkthroughImage(walkthrough.getWalkthroughImage());
+        return projectWalkthroughDto;
+    }
+
+    private String buildWalkthroughPreview(String walkthroughDesc) {
+        if (walkthroughDesc == null || walkthroughDesc.isBlank()) {
+            return "";
+        }
+        String plainText = walkthroughDesc.replaceAll("<[^>]*>", " ").replaceAll("\\s+", " ").trim();
+        if (plainText.length() <= 120) {
+            return plainText;
+        }
+        return plainText.substring(0, 120) + "...";
     }
 
     public Response addUpdate(ProjectWalkthroughDto projectWalkthroughDto) {
         Response response = new Response();
         try {
-            if (projectWalkthroughDto.getWalkthroughDesc().isEmpty()) {
+            if (projectWalkthroughDto.getWalkthroughDesc() == null
+                    || projectWalkthroughDto.getWalkthroughDesc().isBlank()) {
                 response.setMessage("All fields are required !");
                 return response;
             }
