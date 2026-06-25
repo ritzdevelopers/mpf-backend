@@ -19,13 +19,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class CityService {
+    private static final int MONUMENT_MAX_W = 1200;
+    private static final int MONUMENT_MAX_H = 800;
+
     private final CityRepository cityRepository;
     private final StateRepository stateRepository;
     private final CommonMapper commonMapper;
@@ -159,5 +167,148 @@ public class CityService {
 
     public Response addUpdateCity(MultipartFile cityImage, City city) {
         return new Response();
+    }
+
+    /**
+     * Bulk upload city monument images from a single ZIP file.
+     * File names must match city slug/name, e.g. {@code agra.jpg} or {@code agra-monument.png}.
+     */
+    @Transactional
+    public Response uploadCityMonumentsZip(MultipartFile monumentsZip) {
+        if (monumentsZip == null || monumentsZip.isEmpty()) {
+            return new Response(0, "ZIP file is required.", 0);
+        }
+        String zipName = monumentsZip.getOriginalFilename();
+        if (zipName == null || !zipName.toLowerCase(Locale.ROOT).endsWith(".zip")) {
+            return new Response(0, "Only .zip file is allowed.", 0);
+        }
+        try {
+            Map<String, City> bySlug = new HashMap<>();
+            for (City city : cityRepository.findAll()) {
+                if (city.getSlugUrl() != null && !city.getSlugUrl().isBlank()) {
+                    bySlug.put(city.getSlugUrl().trim().toLowerCase(Locale.ROOT), city);
+                }
+                if (city.getName() != null && !city.getName().isBlank()) {
+                    bySlug.putIfAbsent(
+                            fileUtils.generateSlug(city.getName()).toLowerCase(Locale.ROOT), city);
+                }
+            }
+            if (bySlug.isEmpty()) {
+                return new Response(0, "No cities found to map monument images.", 0);
+            }
+
+            String cityUploadDir = Paths.get(uploadDir, "cities").toString();
+            Map<String, byte[]> extracted = new LinkedHashMap<>();
+            extractZipToMap(monumentsZip.getInputStream(), extracted);
+
+            int updated = 0;
+            int skipped = 0;
+            List<String> unmatched = new ArrayList<>();
+            Set<Integer> touchedCityIds = new HashSet<>();
+
+            for (Map.Entry<String, byte[]> entry : extracted.entrySet()) {
+                String fileName = entry.getKey();
+                if (!isImageFileName(fileName)) {
+                    skipped++;
+                    continue;
+                }
+                City city = bySlug.get(resolveCityKeyFromFileName(fileName));
+                if (city == null) {
+                    unmatched.add(fileName);
+                    continue;
+                }
+                String saved = fileUtils.saveImageFromBytes(
+                        entry.getValue(), fileName, cityUploadDir, MONUMENT_MAX_W, MONUMENT_MAX_H);
+                if (saved == null || saved.isBlank()) {
+                    skipped++;
+                    continue;
+                }
+                String oldImage = city.getMonumentImage();
+                if (oldImage != null && !oldImage.isBlank() && !oldImage.equals(saved)) {
+                    fileUtils.deleteFileFromDestination(oldImage, cityUploadDir);
+                }
+                city.setMonumentImage(saved);
+                city.setUpdatedAt(LocalDateTime.now());
+                touchedCityIds.add(city.getId());
+                updated++;
+            }
+
+            for (City city : bySlug.values()) {
+                if (touchedCityIds.contains(city.getId())) {
+                    cityRepository.save(city);
+                }
+            }
+
+            String msg = "Bulk monument upload done. Updated " + updated + " city/cities";
+            if (skipped > 0) {
+                msg += ", skipped " + skipped + " file(s)";
+            }
+            if (!unmatched.isEmpty()) {
+                msg += ", unmatched: " + String.join(", ", unmatched.stream().limit(8).toList());
+                if (unmatched.size() > 8) {
+                    msg += " ...";
+                }
+            }
+            msg += ".";
+            return new Response(1, msg, 0);
+        } catch (Exception e) {
+            log.error("uploadCityMonumentsZip failed: {}", e.getMessage());
+            return new Response(0, e.getMessage() != null ? e.getMessage() : "Bulk upload failed.", 0);
+        }
+    }
+
+    private String resolveCityKeyFromFileName(String fileName) {
+        String base = fileName;
+        int dot = base.lastIndexOf('.');
+        if (dot > 0) {
+            base = base.substring(0, dot);
+        }
+        String normalized = fileUtils.generateSlug(base).toLowerCase(Locale.ROOT);
+        if (normalized.endsWith("-monument")) {
+            normalized = normalized.substring(0, normalized.length() - 9);
+        } else if (normalized.endsWith("-landmark")) {
+            normalized = normalized.substring(0, normalized.length() - 9);
+        }
+        return normalized;
+    }
+
+    private void extractZipToMap(InputStream zipIs, Map<String, byte[]> out) throws Exception {
+        try (ZipInputStream zis = new ZipInputStream(zipIs)) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                if (entry.isDirectory()) {
+                    continue;
+                }
+                String name = entry.getName();
+                if (name.contains("..") || name.contains("\\")) {
+                    continue;
+                }
+                if (name.contains("/")) {
+                    name = name.substring(name.lastIndexOf('/') + 1);
+                }
+                if (name.isBlank() || name.startsWith(".") || name.startsWith("__MACOSX")) {
+                    continue;
+                }
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = zis.read(buf)) > 0) {
+                    baos.write(buf, 0, n);
+                }
+                out.put(name, baos.toByteArray());
+            }
+        }
+    }
+
+    private static boolean isImageFileName(String name) {
+        if (name == null) {
+            return false;
+        }
+        String lower = name.toLowerCase(Locale.ROOT);
+        return lower.endsWith(".jpg")
+                || lower.endsWith(".jpeg")
+                || lower.endsWith(".png")
+                || lower.endsWith(".gif")
+                || lower.endsWith(".webp");
     }
 }

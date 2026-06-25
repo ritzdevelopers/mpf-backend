@@ -59,4 +59,18 @@ public class CityController {
                                                   @RequestBody City city) {
         return new ResponseEntity<>(cityService.addUpdateCity(cityImage, city), HttpStatus.OK);
     }
+
+    /**
+     * Bulk upload city monument images from a single ZIP file.
+     * File names must match city slug/name, e.g. {@code agra.jpg} or {@code agra-monument.png}.
+     */
+    @PostMapping("/upload-city-monuments-zip")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
+    public ResponseEntity<Response> uploadCityMonumentsZip(
+            @RequestParam("monumentsZip") MultipartFile monumentsZip) {
+        Response response = cityService.uploadCityMonumentsZip(monumentsZip);
+        return ResponseEntity.status(
+                        response.getIsSuccess() == 1 ? HttpStatus.OK : HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
 }
