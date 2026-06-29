@@ -4,9 +4,11 @@ import com.mypropertyfact.estate.dtos.AdminAuditLogEntryDto;
 import com.mypropertyfact.estate.dtos.AdminAuditLogPageResponse;
 import com.mypropertyfact.estate.dtos.SiteTrafficSummaryResponse;
 import com.mypropertyfact.estate.dtos.SiteTrafficVisitPageResponse;
+import com.mypropertyfact.estate.dtos.SuperAdminNotificationsResponse;
 import com.mypropertyfact.estate.dtos.TrafficRevealRequest;
 import com.mypropertyfact.estate.services.AdminAuditLogService;
 import com.mypropertyfact.estate.services.SiteTrafficService;
+import com.mypropertyfact.estate.services.SuperAdminNotificationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 
 @RestController
@@ -38,6 +42,7 @@ public class SuperAdminTrackingController {
 
     private final SiteTrafficService siteTrafficService;
     private final AdminAuditLogService adminAuditLogService;
+    private final SuperAdminNotificationService superAdminNotificationService;
 
     @Value("${http.secure}")
     private boolean httpSecure;
@@ -131,6 +136,20 @@ public class SuperAdminTrackingController {
                 .size(result.getSize())
                 .build();
         return ResponseEntity.ok(body);
+    }
+
+    @GetMapping("/notifications")
+    public ResponseEntity<SuperAdminNotificationsResponse> notifications(
+            @RequestParam(required = false) String since) {
+        LocalDateTime sinceDt = null;
+        if (since != null && !since.isBlank()) {
+            try {
+                sinceDt = LocalDateTime.parse(since.trim());
+            } catch (DateTimeParseException ignored) {
+                sinceDt = null;
+            }
+        }
+        return ResponseEntity.ok(superAdminNotificationService.buildFeed(sinceDt));
     }
 
     /**

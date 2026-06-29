@@ -97,6 +97,21 @@ public final class AdminApiTaskDescriber {
             }
             return "Web story API";
         }
+        if (path.contains("/api/v1/enquiry")) {
+            if (HttpMethod.POST.matches(method)) {
+                return "Submit or update enquiry";
+            }
+            if (HttpMethod.DELETE.matches(method)) {
+                return "Delete enquiry";
+            }
+            if (path.contains("/update-status")) {
+                return "Update enquiry status";
+            }
+            if (HttpMethod.GET.matches(method)) {
+                return "List or view enquiries";
+            }
+            return "Enquiry API";
+        }
         if (path.contains("/api/v1/projects")) {
             if (path.contains("/add-new") && HttpMethod.POST.matches(method)) {
                 return "Create or update project"; 
