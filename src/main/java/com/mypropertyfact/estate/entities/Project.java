@@ -21,7 +21,7 @@ import java.util.Set;
                 @NamedAttributeNode("projectBanners"),
                 @NamedAttributeNode("floorPlans"),
                 @NamedAttributeNode("amenities"),
-                @NamedAttributeNode("projectsAbout"),
+                @NamedAttributeNode("projectsAbouts"),
                 @NamedAttributeNode("projectWalkthroughs"),
                 @NamedAttributeNode("locationBenefits"),
                 @NamedAttributeNode("projectGalleries"),
@@ -34,7 +34,7 @@ import java.util.Set;
 @Table(name = "projects")
 @ToString(exclude = {
         "city", "builder", "projectTypes", "projectStatus",
-        "projectBanners", "floorPlans", "amenities", "projectsAbout",
+        "projectBanners", "floorPlans", "amenities", "projectsAbouts",
         "projectWalkthroughs", "locationBenefits", "projectGalleries", "projectFaqs"
 })
 public class Project {
@@ -108,9 +108,16 @@ public class Project {
     @JsonIgnore
     private Set<FloorPlan> floorPlans;
 
-    @OneToOne(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "project", fetch = FetchType.LAZY)
+    @OrderBy("id DESC")
     @JsonIgnore
-    private ProjectsAbout projectsAbout;
+    private List<ProjectsAbout> projectsAbouts = new ArrayList<>();
+
+    public ProjectsAbout getProjectsAbout() {
+        return projectsAbouts == null || projectsAbouts.isEmpty()
+                ? null
+                : projectsAbouts.get(0);
+    }
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "builder_id")

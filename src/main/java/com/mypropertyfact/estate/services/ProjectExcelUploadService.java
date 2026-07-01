@@ -157,7 +157,8 @@ public class ProjectExcelUploadService {
                     // About / overview (text from Excel only)
                     String aboutDesc = getCell(colIndex, row,  "PROJECT ABOUT SHORT DESCRIPTION");
                     if (aboutDesc != null && !aboutDesc.trim().isEmpty()) {
-                        ProjectsAbout about = projectAboutRepository.findByProject_Id(project.getId()).orElse(null);
+                        ProjectsAbout about = projectAboutRepository
+                                .findFirstByProject_IdOrderByIdDesc(project.getId()).orElse(null);
                         if (about == null) {
                             about = new ProjectsAbout();
                             about.setProject(project);

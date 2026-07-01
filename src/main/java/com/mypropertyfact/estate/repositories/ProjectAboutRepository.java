@@ -10,7 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface ProjectAboutRepository extends JpaRepository<ProjectsAbout, Integer> {
-    Optional<ProjectsAbout> findByProject_Id(int projectId);
+    Optional<ProjectsAbout> findFirstByProject_IdOrderByIdDesc(int projectId);
 
     /**
      * Flat SQL read avoids Hibernate OneToOne inverse-mapping failures when production

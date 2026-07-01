@@ -48,11 +48,11 @@ public class ProjectAboutService {
                 response.setMessage("Please select a project.");
                 return response;
             }
-            Optional<Project> projectById = projectRepository.findById(projectAboutDto.getProjectId());
-            if (projectById.isEmpty()) {
+            if (!projectRepository.existsById(projectAboutDto.getProjectId())) {
                 response.setMessage("Selected project was not found.");
                 return response;
             }
+            Project projectRef = projectRepository.getReferenceById(projectAboutDto.getProjectId());
             if(projectAboutDto.getId() > 0){
                 Optional<ProjectsAbout> saveData = projectAboutRepository.findById(projectAboutDto.getId());
                 if (saveData.isEmpty()) {
@@ -62,13 +62,13 @@ public class ProjectAboutService {
                 ProjectsAbout about = saveData.get();
                 about.setShortDesc(shortDesc);
                 about.setLongDesc(longDesc);
-                about.setProject(projectById.get());
+                about.setProject(projectRef);
                 projectAboutRepository.save(about);
                 response.setMessage("Project's about details updated successfully...");
                 response.setIsSuccess(1);
             }else{
                 Optional<ProjectsAbout> existingForProject =
-                        projectAboutRepository.findByProject_Id(projectAboutDto.getProjectId());
+                        projectAboutRepository.findFirstByProject_IdOrderByIdDesc(projectAboutDto.getProjectId());
                 if (existingForProject.isPresent()) {
                     response.setMessage("This project already has 'about' details. Please update the existing entry.");
                     response.setIsSuccess(0);
@@ -77,7 +77,7 @@ public class ProjectAboutService {
                 ProjectsAbout projectAbout = new ProjectsAbout();
                 projectAbout.setLongDesc(longDesc);
                 projectAbout.setShortDesc(shortDesc);
-                projectAbout.setProject(projectById.get());
+                projectAbout.setProject(projectRef);
                 projectAboutRepository.save(projectAbout);
                 response.setMessage("Project's about details saved successfully...");
                 response.setIsSuccess(1);

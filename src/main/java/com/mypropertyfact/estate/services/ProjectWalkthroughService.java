@@ -79,11 +79,11 @@ public class ProjectWalkthroughService {
                 response.setMessage("Please select a project.");
                 return response;
             }
-            Optional<Project> project = projectRepository.findById(projectWalkthroughDto.getProjectId());
-            if (project.isEmpty()) {
+            if (!projectRepository.existsById(projectWalkthroughDto.getProjectId())) {
                 response.setMessage("Selected project was not found.");
                 return response;
             }
+            Project projectRef = projectRepository.getReferenceById(projectWalkthroughDto.getProjectId());
             if (projectWalkthroughDto.getId() > 0) {
                 Optional<ProjectWalkthrough> savedWalkthrough =
                         projectWalkthroughRepository.findById(projectWalkthroughDto.getId());
@@ -93,7 +93,7 @@ public class ProjectWalkthroughService {
                 }
                 ProjectWalkthrough walkthrough = savedWalkthrough.get();
                 walkthrough.setWalkthroughDesc(projectWalkthroughDto.getWalkthroughDesc());
-                walkthrough.setProject(project.get());
+                walkthrough.setProject(projectRef);
                 projectWalkthroughRepository.save(walkthrough);
                 response.setMessage("Walkthrough updated successfully...");
                 response.setIsSuccess(1);
@@ -107,7 +107,7 @@ public class ProjectWalkthroughService {
                 }
                 ProjectWalkthrough projectWalkthrough = new ProjectWalkthrough();
                 projectWalkthrough.setWalkthroughDesc(projectWalkthroughDto.getWalkthroughDesc());
-                projectWalkthrough.setProject(project.get());
+                projectWalkthrough.setProject(projectRef);
                 projectWalkthroughRepository.save(projectWalkthrough);
                 response.setMessage("Walkthrough saved successfully...");
                 response.setIsSuccess(1);
