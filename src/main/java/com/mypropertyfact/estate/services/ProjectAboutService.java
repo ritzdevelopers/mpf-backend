@@ -41,36 +41,55 @@ public class ProjectAboutService {
     public Response addUpdate(ProjectAboutDto projectAboutDto){
         Response response = new Response();
         try{
-            if(projectAboutDto.getLongDesc().isEmpty() || projectAboutDto.getShortDesc().isEmpty()){
+            String shortDesc = projectAboutDto.getShortDesc();
+            String longDesc = projectAboutDto.getLongDesc();
+            if (shortDesc == null || shortDesc.isBlank() || longDesc == null || longDesc.isBlank()) {
                 response.setMessage(Constants.ALL_FIELDS_REQUIRED);
                 return response;
             }
+            if (projectAboutDto.getProjectId() <= 0) {
+                response.setMessage("Please select a project.");
+                return response;
+            }
             Optional<Project> projectById = projectRepository.findById(projectAboutDto.getProjectId());
+            if (projectById.isEmpty()) {
+                response.setMessage("Selected project was not found.");
+                return response;
+            }
             if(projectAboutDto.getId() > 0){
                 Optional<ProjectsAbout> saveData = projectAboutRepository.findById(projectAboutDto.getId());
-                saveData.ifPresent(about-> {
-                    about.setShortDesc(projectAboutDto.getShortDesc());
-                    about.setLongDesc(projectAboutDto.getLongDesc());
-                    projectById.ifPresent(about::setProject);
-                    projectAboutRepository.save(about);
-                    response.setMessage("Project's about details updated successfully...");
-                    response.setIsSuccess(1);
-                });
+                if (saveData.isEmpty()) {
+                    response.setMessage("Project about entry was not found.");
+                    return response;
+                }
+                ProjectsAbout about = saveData.get();
+                about.setShortDesc(shortDesc);
+                about.setLongDesc(longDesc);
+                about.setProject(projectById.get());
+                projectAboutRepository.save(about);
+                response.setMessage("Project's about details updated successfully...");
+                response.setIsSuccess(1);
             }else{
+                Optional<ProjectsAbout> existingForProject =
+                        projectAboutRepository.findByProject_Id(projectAboutDto.getProjectId());
+                if (existingForProject.isPresent()) {
+                    response.setMessage("This project already has 'about' details. Please update the existing entry.");
+                    response.setIsSuccess(0);
+                    return response;
+                }
                 ProjectsAbout projectAbout = new ProjectsAbout();
-                projectAbout.setLongDesc(projectAboutDto.getLongDesc());
-                projectAbout.setShortDesc(projectAboutDto.getShortDesc());
-                projectById.ifPresent(projectAbout::setProject);
+                projectAbout.setLongDesc(longDesc);
+                projectAbout.setShortDesc(shortDesc);
+                projectAbout.setProject(projectById.get());
                 projectAboutRepository.save(projectAbout);
                 response.setMessage("Project's about details saved successfully...");
                 response.setIsSuccess(1);
             }
         } catch (DataIntegrityViolationException e) {
-            // This exception occurs when a unique constraint is violated
             response.setMessage("This project already has 'about' details. Please update the existing entry.");
             response.setIsSuccess(0);
         } catch (Exception e){
-            response.setMessage(e.getMessage());
+            response.setMessage(e.getMessage() != null ? e.getMessage() : "Failed to save project about.");
         }
         return response;
     }
