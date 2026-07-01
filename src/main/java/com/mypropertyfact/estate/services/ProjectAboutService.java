@@ -24,16 +24,13 @@ public class ProjectAboutService {
     private final ProjectRepository projectRepository;
 
     public List<Map<String, Object>> getAllProjectsAbout(){
-        List<ProjectsAbout> allProjectAbout = projectAboutRepository.findAll();
-        return allProjectAbout.stream().map(about->{
-            Map<String, Object> response= new HashMap<>();
-            response.put("id", about.getId());
-            response.put("longDesc", about.getLongDesc());
-            response.put("shortDesc", about.getShortDesc());
-            if(about.getProject() != null) {
-                response.put("projectId", about.getProject().getId());
-                response.put("projectName", about.getProject().getProjectName());
-            }
+        return projectAboutRepository.findAllSummaries().stream().map(row -> {
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", row[0]);
+            response.put("shortDesc", row[1]);
+            response.put("longDesc", row[2]);
+            response.put("projectId", row[3]);
+            response.put("projectName", row[4]);
             return response;
         }).toList();
     }
