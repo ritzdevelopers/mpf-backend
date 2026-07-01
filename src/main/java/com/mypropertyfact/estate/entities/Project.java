@@ -7,6 +7,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -21,7 +22,7 @@ import java.util.Set;
                 @NamedAttributeNode("floorPlans"),
                 @NamedAttributeNode("amenities"),
                 @NamedAttributeNode("projectsAbout"),
-                @NamedAttributeNode("projectWalkthrough"),
+                @NamedAttributeNode("projectWalkthroughs"),
                 @NamedAttributeNode("locationBenefits"),
                 @NamedAttributeNode("projectGalleries"),
                 @NamedAttributeNode("projectFaqs")
@@ -34,7 +35,7 @@ import java.util.Set;
 @ToString(exclude = {
         "city", "builder", "projectTypes", "projectStatus",
         "projectBanners", "floorPlans", "amenities", "projectsAbout",
-        "projectWalkthrough", "locationBenefits", "projectGalleries", "projectFaqs"
+        "projectWalkthroughs", "locationBenefits", "projectGalleries", "projectFaqs"
 })
 public class Project {
     @Id
@@ -121,9 +122,16 @@ public class Project {
     @JsonIgnore
     private ProjectTypes projectTypes;
 
-    @OneToOne(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "project", fetch = FetchType.LAZY)
+    @OrderBy("id DESC")
     @JsonIgnore
-    private ProjectWalkthrough projectWalkthrough;
+    private List<ProjectWalkthrough> projectWalkthroughs = new ArrayList<>();
+
+    public ProjectWalkthrough getProjectWalkthrough() {
+        return projectWalkthroughs == null || projectWalkthroughs.isEmpty()
+                ? null
+                : projectWalkthroughs.get(0);
+    }
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore

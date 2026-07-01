@@ -142,7 +142,8 @@ public class ProjectExcelUploadService {
                     projectRepository.save(project);
 
                     // Project walkthrough (text from Excel only)
-                    Optional<ProjectWalkthrough> existingWalkthrough = projectWalkthroughRepository.findByProject(project);
+                    Optional<ProjectWalkthrough> existingWalkthrough =
+                            projectWalkthroughRepository.findFirstByProject_IdOrderByIdDesc(project.getId());
                     if (existingWalkthrough.isEmpty()) {
                         String walkthroughDesc = getCell(colIndex, row, "PROJECT WALKTHROUGH DESCRIPTION");
                         if (walkthroughDesc != null && !walkthroughDesc.trim().isEmpty()) {

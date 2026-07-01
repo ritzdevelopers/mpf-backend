@@ -185,12 +185,15 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             )
             FROM Project p
             LEFT JOIN p.builder b
-            LEFT JOIN p.projectWalkthrough w
+            LEFT JOIN p.projectWalkthroughs w
             LEFT JOIN p.city c
             LEFT JOIN p.projectTypes pt
             LEFT JOIN p.projectStatus ps
             WHERE p.slugURL = :slug
             AND p.status = true
+            AND (w.id IS NULL OR w.id = (
+                SELECT MAX(w2.id) FROM ProjectWalkthrough w2 WHERE w2.project = p
+            ))
         """)
     Optional<ProjectFullDetails> findProjectFullDetails(@Param("slug") String slug);
 
@@ -240,11 +243,14 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             )
             FROM Project p
             LEFT JOIN p.builder b
-            LEFT JOIN p.projectWalkthrough w
+            LEFT JOIN p.projectWalkthroughs w
             LEFT JOIN p.city c
             LEFT JOIN p.projectTypes pt
             LEFT JOIN p.projectStatus ps
             WHERE p.slugURL = :slug
+            AND (w.id IS NULL OR w.id = (
+                SELECT MAX(w2.id) FROM ProjectWalkthrough w2 WHERE w2.project = p
+            ))
         """)
     Optional<ProjectFullDetails> findProjectFullDetailsForAdmin(@Param("slug") String slug);
 
@@ -294,11 +300,14 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             )
             FROM Project p
             LEFT JOIN p.builder b
-            LEFT JOIN p.projectWalkthrough w
+            LEFT JOIN p.projectWalkthroughs w
             LEFT JOIN p.city c
             LEFT JOIN p.projectTypes pt
             LEFT JOIN p.projectStatus ps
             WHERE p.id = :id
+            AND (w.id IS NULL OR w.id = (
+                SELECT MAX(w2.id) FROM ProjectWalkthrough w2 WHERE w2.project = p
+            ))
         """)
     Optional<ProjectFullDetails> findProjectFullDetailsByIdForAdmin(@Param("id") int id);
 

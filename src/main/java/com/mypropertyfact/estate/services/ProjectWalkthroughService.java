@@ -7,7 +7,9 @@ import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.repositories.ProjectRepository;
 import com.mypropertyfact.estate.repositories.ProjectWalkthroughRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -20,34 +22,37 @@ public class ProjectWalkthroughService {
     private final ProjectRepository projectRepository;
 
     public List<ProjectWalkthroughDto> getAllWalkthrough() {
-        List<ProjectWalkthrough> allWalkthrough = this.projectWalkthroughRepository.findAll();
-        return allWalkthrough.stream().map(walkthrough-> {
-            ProjectWalkthroughDto projectWalkthroughDto = new ProjectWalkthroughDto();
-            projectWalkthroughDto.setId(walkthrough.getId());
-            if (walkthrough.getProject() != null) {
-                projectWalkthroughDto.setProjectId(walkthrough.getProject().getId());
-                projectWalkthroughDto.setProjectName(walkthrough.getProject().getProjectName());
-            }
-            projectWalkthroughDto.setWalkthroughDesc(buildWalkthroughPreview(walkthrough.getWalkthroughDesc()));
-            return projectWalkthroughDto;
-        }).toList();
+        return projectWalkthroughRepository.findAllSummaries().stream()
+                .map(this::mapSummaryRow)
+                .toList();
     }
 
     public ProjectWalkthroughDto getWalkthroughById(int id) {
-        return projectWalkthroughRepository.findById(id)
-                .map(this::mapToDto)
+        return projectWalkthroughRepository.findDetailsById(id)
+                .map(this::mapDetailsRow)
                 .orElse(null);
     }
 
-    private ProjectWalkthroughDto mapToDto(ProjectWalkthrough walkthrough) {
+    private ProjectWalkthroughDto mapSummaryRow(Object[] row) {
         ProjectWalkthroughDto projectWalkthroughDto = new ProjectWalkthroughDto();
-        projectWalkthroughDto.setId(walkthrough.getId());
-        if (walkthrough.getProject() != null) {
-            projectWalkthroughDto.setProjectId(walkthrough.getProject().getId());
-            projectWalkthroughDto.setProjectName(walkthrough.getProject().getProjectName());
+        projectWalkthroughDto.setId(((Number) row[0]).intValue());
+        projectWalkthroughDto.setWalkthroughDesc(buildWalkthroughPreview((String) row[1]));
+        if (row[2] != null) {
+            projectWalkthroughDto.setProjectId(((Number) row[2]).intValue());
         }
-        projectWalkthroughDto.setWalkthroughDesc(walkthrough.getWalkthroughDesc());
-        projectWalkthroughDto.setWalkthroughImage(walkthrough.getWalkthroughImage());
+        projectWalkthroughDto.setProjectName((String) row[3]);
+        return projectWalkthroughDto;
+    }
+
+    private ProjectWalkthroughDto mapDetailsRow(Object[] row) {
+        ProjectWalkthroughDto projectWalkthroughDto = new ProjectWalkthroughDto();
+        projectWalkthroughDto.setId(((Number) row[0]).intValue());
+        projectWalkthroughDto.setWalkthroughDesc((String) row[1]);
+        projectWalkthroughDto.setWalkthroughImage((String) row[2]);
+        if (row[3] != null) {
+            projectWalkthroughDto.setProjectId(((Number) row[3]).intValue());
+        }
+        projectWalkthroughDto.setProjectName((String) row[4]);
         return projectWalkthroughDto;
     }
 
@@ -70,26 +75,48 @@ public class ProjectWalkthroughService {
                 response.setMessage("All fields are required !");
                 return response;
             }
+            if (projectWalkthroughDto.getProjectId() <= 0) {
+                response.setMessage("Please select a project.");
+                return response;
+            }
             Optional<Project> project = projectRepository.findById(projectWalkthroughDto.getProjectId());
+            if (project.isEmpty()) {
+                response.setMessage("Selected project was not found.");
+                return response;
+            }
             if (projectWalkthroughDto.getId() > 0) {
-                Optional<ProjectWalkthrough> savedWalkthrough = projectWalkthroughRepository.findById(projectWalkthroughDto.getId());
-                savedWalkthrough.ifPresent(walkthrough -> {
-                    walkthrough.setWalkthroughDesc(projectWalkthroughDto.getWalkthroughDesc());
-                    project.ifPresent(walkthrough::setProject);
-                    projectWalkthroughRepository.save(walkthrough);
-                    response.setMessage("Walkthrough updated successfully...");
-                    response.setIsSuccess(1);
-                });
+                Optional<ProjectWalkthrough> savedWalkthrough =
+                        projectWalkthroughRepository.findById(projectWalkthroughDto.getId());
+                if (savedWalkthrough.isEmpty()) {
+                    response.setMessage("Walkthrough entry was not found.");
+                    return response;
+                }
+                ProjectWalkthrough walkthrough = savedWalkthrough.get();
+                walkthrough.setWalkthroughDesc(projectWalkthroughDto.getWalkthroughDesc());
+                walkthrough.setProject(project.get());
+                projectWalkthroughRepository.save(walkthrough);
+                response.setMessage("Walkthrough updated successfully...");
+                response.setIsSuccess(1);
             } else {
+                Optional<ProjectWalkthrough> existingForProject = projectWalkthroughRepository
+                        .findFirstByProject_IdOrderByIdDesc(projectWalkthroughDto.getProjectId());
+                if (existingForProject.isPresent()) {
+                    response.setMessage("This project already has a walkthrough. Please update the existing entry.");
+                    response.setIsSuccess(0);
+                    return response;
+                }
                 ProjectWalkthrough projectWalkthrough = new ProjectWalkthrough();
                 projectWalkthrough.setWalkthroughDesc(projectWalkthroughDto.getWalkthroughDesc());
-                project.ifPresent(projectWalkthrough::setProject);
+                projectWalkthrough.setProject(project.get());
                 projectWalkthroughRepository.save(projectWalkthrough);
                 response.setMessage("Walkthrough saved successfully...");
                 response.setIsSuccess(1);
             }
+        } catch (DataIntegrityViolationException e) {
+            response.setMessage("This project already has a walkthrough. Please update the existing entry.");
+            response.setIsSuccess(0);
         } catch (Exception e) {
-            response.setMessage(e.getMessage());
+            response.setMessage(e.getMessage() != null ? e.getMessage() : "Failed to save walkthrough.");
         }
         return response;
     }
