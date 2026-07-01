@@ -413,6 +413,22 @@ public class ProjectService {
 
     public ProjectFullDetails getProjectDetailsBySlug(String slug) {
         ProjectFullDetails projectFullDetails = projectRepository.findProjectFullDetails(slug).orElseThrow(() -> new IllegalArgumentException("Project not found with slug: "+ slug));
+        return enrichProjectFullDetails(projectFullDetails);
+    }
+
+    public ProjectFullDetails getProjectDetailsBySlugForAdmin(String slug) {
+        ProjectFullDetails projectFullDetails = projectRepository.findProjectFullDetailsForAdmin(slug)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found with slug: " + slug));
+        return enrichProjectFullDetails(projectFullDetails);
+    }
+
+    public ProjectFullDetails getProjectDetailsByIdForAdmin(int id) {
+        ProjectFullDetails projectFullDetails = projectRepository.findProjectFullDetailsByIdForAdmin(id)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found with id: " + id));
+        return enrichProjectFullDetails(projectFullDetails);
+    }
+
+    private ProjectFullDetails enrichProjectFullDetails(ProjectFullDetails projectFullDetails) {
         List<Amenity> amenities = amenityRepository.findByProjectsId(projectFullDetails.getId());
         List<AmenityDto> amenityDtoList = amenities.stream().map(amenity-> AmenityDto.builder()
                 .id(amenity.getId())

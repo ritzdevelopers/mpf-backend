@@ -195,6 +195,114 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
     Optional<ProjectFullDetails> findProjectFullDetails(@Param("slug") String slug);
 
     @Query("""
+            SELECT new com.mypropertyfact.estate.dtos.ProjectFullDetails(
+                p.id,
+                p.metaTitle,
+                p.metaKeyword,
+                p.metaDescription,
+                p.projectName,
+                p.projectLocality,
+                p.projectConfiguration,
+                p.projectPrice,
+                p.ivrNo,
+                p.locationMap,
+                p.reraNo,
+                p.reraQr,
+                p.reraWebsite,
+                p.projectLogo,
+                p.slugURL,
+                p.showFeaturedProperties,
+                p.projectLogoAltTag,
+                p.locationMapAltTag,
+                p.status,
+                p.amenityDesc,
+                p.floorPlanDesc,
+                p.locationDesc,
+                new com.mypropertyfact.estate.dtos.BuilderDto(
+                    b.id,
+                    b.builderName,
+                    b.builderDesc,
+                    b.slugUrl
+                ),
+                p.createdAt,
+                p.updatedAt,
+                w.walkthroughDesc,
+                c.state.stateName,
+                c.name,
+                c.state.country.countryName,
+                pt.projectTypeName,
+                c.state.country.id,
+                c.state.id,
+                c.id,
+                p.projectThumbnail,
+                pt.id,
+                ps.id
+            )
+            FROM Project p
+            LEFT JOIN p.builder b
+            LEFT JOIN p.projectWalkthrough w
+            LEFT JOIN p.city c
+            LEFT JOIN p.projectTypes pt
+            LEFT JOIN p.projectStatus ps
+            WHERE p.slugURL = :slug
+        """)
+    Optional<ProjectFullDetails> findProjectFullDetailsForAdmin(@Param("slug") String slug);
+
+    @Query("""
+            SELECT new com.mypropertyfact.estate.dtos.ProjectFullDetails(
+                p.id,
+                p.metaTitle,
+                p.metaKeyword,
+                p.metaDescription,
+                p.projectName,
+                p.projectLocality,
+                p.projectConfiguration,
+                p.projectPrice,
+                p.ivrNo,
+                p.locationMap,
+                p.reraNo,
+                p.reraQr,
+                p.reraWebsite,
+                p.projectLogo,
+                p.slugURL,
+                p.showFeaturedProperties,
+                p.projectLogoAltTag,
+                p.locationMapAltTag,
+                p.status,
+                p.amenityDesc,
+                p.floorPlanDesc,
+                p.locationDesc,
+                new com.mypropertyfact.estate.dtos.BuilderDto(
+                    b.id,
+                    b.builderName,
+                    b.builderDesc,
+                    b.slugUrl
+                ),
+                p.createdAt,
+                p.updatedAt,
+                w.walkthroughDesc,
+                c.state.stateName,
+                c.name,
+                c.state.country.countryName,
+                pt.projectTypeName,
+                c.state.country.id,
+                c.state.id,
+                c.id,
+                p.projectThumbnail,
+                pt.id,
+                ps.id
+            )
+            FROM Project p
+            LEFT JOIN p.builder b
+            LEFT JOIN p.projectWalkthrough w
+            LEFT JOIN p.city c
+            LEFT JOIN p.projectTypes pt
+            LEFT JOIN p.projectStatus ps
+            WHERE p.id = :id
+        """)
+    Optional<ProjectFullDetails> findProjectFullDetailsByIdForAdmin(@Param("id") int id);
+
+    @Query("""
             SELECT p FROM Project p
             LEFT JOIN FETCH p.city c
             LEFT JOIN FETCH c.state

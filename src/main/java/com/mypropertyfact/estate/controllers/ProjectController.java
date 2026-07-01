@@ -59,6 +59,18 @@ public class ProjectController {
         return new ResponseEntity<>(this.projectService.getProjectDetailsBySlug(url), HttpStatus.OK);
     }
 
+    @GetMapping("/admin/get/{url}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
+    public ResponseEntity<?> getBySlugForAdmin(@PathVariable("url") String url) {
+        return new ResponseEntity<>(this.projectService.getProjectDetailsBySlugForAdmin(url), HttpStatus.OK);
+    }
+
+    @GetMapping("/admin/get-by-id/{id}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
+    public ResponseEntity<?> getByIdForAdmin(@PathVariable("id") int id) {
+        return new ResponseEntity<>(this.projectService.getProjectDetailsByIdForAdmin(id), HttpStatus.OK);
+    }
+
     @DeleteMapping("/delete/{id}")
     @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
     public ResponseEntity<Response> deleteProject(@PathVariable("id") int id) {
