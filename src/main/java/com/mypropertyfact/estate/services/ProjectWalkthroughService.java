@@ -28,7 +28,8 @@ public class ProjectWalkthroughService {
     }
 
     public ProjectWalkthroughDto getWalkthroughById(int id) {
-        return projectWalkthroughRepository.findDetailsById(id)
+        return projectWalkthroughRepository.findDetailsById(id).stream()
+                .findFirst()
                 .map(this::mapDetailsRow)
                 .orElse(null);
     }

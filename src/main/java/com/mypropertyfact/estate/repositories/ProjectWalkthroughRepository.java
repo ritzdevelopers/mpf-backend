@@ -34,5 +34,5 @@ public interface ProjectWalkthroughRepository extends JpaRepository<ProjectWalkt
             LEFT JOIN projects p ON p.id = pw.project_id
             WHERE pw.id = :id
             """, nativeQuery = true)
-    Optional<Object[]> findDetailsById(@Param("id") int id);
+    List<Object[]> findDetailsById(@Param("id") int id);
 }
