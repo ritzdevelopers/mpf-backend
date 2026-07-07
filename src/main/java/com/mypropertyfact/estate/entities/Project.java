@@ -113,6 +113,7 @@ public class Project {
     @JsonIgnore
     private List<ProjectsAbout> projectsAbouts = new ArrayList<>();
 
+    @JsonIgnore
     public ProjectsAbout getProjectsAbout() {
         return projectsAbouts == null || projectsAbouts.isEmpty()
                 ? null
@@ -134,6 +135,7 @@ public class Project {
     @JsonIgnore
     private List<ProjectWalkthrough> projectWalkthroughs = new ArrayList<>();
 
+    @JsonIgnore
     public ProjectWalkthrough getProjectWalkthrough() {
         return projectWalkthroughs == null || projectWalkthroughs.isEmpty()
                 ? null

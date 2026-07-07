@@ -4,6 +4,7 @@ import com.mypropertyfact.estate.dtos.ProjectExportDto;
 import com.mypropertyfact.estate.dtos.ProjectFullDetails;
 import com.mypropertyfact.estate.dtos.ProjectShortDetails;
 import com.mypropertyfact.estate.entities.Project;
+import com.mypropertyfact.estate.models.ProjectAmenityResponse;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -326,5 +327,17 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             WHERE p.slugURL IN :slugs
             """)
     List<Project> findAllWithCityStateBySlugIn(@Param("slugs") List<String> slugs);
+
+    @Query("""
+            SELECT new com.mypropertyfact.estate.models.ProjectAmenityResponse(
+                p.id,
+                p.projectName,
+                ''
+            )
+            FROM Project p
+            WHERE SIZE(p.amenities) > 0
+            ORDER BY p.projectName
+            """)
+    List<ProjectAmenityResponse> findProjectsWithAmenities();
 
 }

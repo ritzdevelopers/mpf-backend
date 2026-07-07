@@ -109,7 +109,7 @@ public class LocationBenefitService {
                         benefit.setIconImage(iconImageName);
                     }
                     benefit.setBenefitName(locationBenefitDto.getBenefitName());
-                    benefit.setDistance(locationBenefitDto.getDistance());
+                    benefit.setDistance(normalizeDistance(locationBenefitDto.getDistance()));
                     project.ifPresent(benefit::setProject);
                     locationBenefitRepository.save(benefit);
                     response.setIsSuccess(1);
@@ -118,7 +118,7 @@ public class LocationBenefitService {
             } else {
                 LocationBenefit locationBenefit = new LocationBenefit();
                 locationBenefit.setBenefitName(locationBenefitDto.getBenefitName());
-                locationBenefit.setDistance(locationBenefitDto.getDistance());
+                locationBenefit.setDistance(normalizeDistance(locationBenefitDto.getDistance()));
                 locationBenefit.setIconImage(iconImageName);
                 project.ifPresent(locationBenefit::setProject);
                 this.locationBenefitRepository.save(locationBenefit);
@@ -129,6 +129,14 @@ public class LocationBenefitService {
             response.setMessage(e.getMessage());
         }
         return response;
+    }
+
+    private String normalizeDistance(String distance) {
+        if (!StringUtils.hasText(distance)) {
+            return distance;
+        }
+        String numericPart = distance.trim().replaceAll("(?i)\\s*km\\s*$", "").trim();
+        return numericPart + " Km";
     }
 
     public Response deleteLocationBenefit(int id) {

@@ -5,12 +5,15 @@ import com.mypropertyfact.estate.entities.Amenity;
 import com.mypropertyfact.estate.entities.Project;
 import com.mypropertyfact.estate.entities.ProjectAmenity;
 import com.mypropertyfact.estate.models.ProjectAmenityDto;
+import com.mypropertyfact.estate.models.ProjectAmenityResponse;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.repositories.ProjectAmenityRepository;
 import com.mypropertyfact.estate.repositories.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,9 +25,8 @@ public class ProjectAmenityService {
 
     private final ProjectRepository projectRepository;
 
-    public List<Project> getAllProjectAmenity() {
-
-        return this.projectRepository.findAll();
+    public List<ProjectAmenityResponse> getAllProjectAmenity() {
+        return this.projectRepository.findProjectsWithAmenities();
     }
     public Response addProjectAmenity(ProjectAmenityDto projectAmenityDto) {
         Response response = new Response();
@@ -60,8 +62,15 @@ public class ProjectAmenityService {
     public List<Amenity> getById(int id) {
         return this.projectAmenityRepository.findListByProjectId(id);
     }
-    public Response deleteProjectAmenity(int projectId){
-        this.projectAmenityRepository.deleteByProjectId(projectId);
+    @Transactional
+    public Response deleteProjectAmenity(int projectId) {
+        Optional<Project> project = this.projectRepository.findById(projectId);
+        if (project.isEmpty()) {
+            return new Response(0, "Project not found", 0);
+        }
+        Project dbProject = project.get();
+        dbProject.setAmenities(new HashSet<>());
+        this.projectRepository.save(dbProject);
         return new Response(1, "Project amenity deleted successfully...", 0);
     }
 }

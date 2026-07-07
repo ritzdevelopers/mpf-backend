@@ -2,6 +2,7 @@ package com.mypropertyfact.estate.controllers;
 
 import com.mypropertyfact.estate.entities.Amenity;
 import com.mypropertyfact.estate.models.ProjectAmenityDto;
+import com.mypropertyfact.estate.models.ProjectAmenityResponse;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.ProjectAmenityService;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ public class ProjectAmenityController {
     private final ProjectAmenityService projectAmenityService;
 
     @GetMapping("/all")
-    public ResponseEntity<?> getAllProjectAmenity(){
+    public ResponseEntity<List<ProjectAmenityResponse>> getAllProjectAmenity(){
         return new ResponseEntity<>(this.projectAmenityService.getAllProjectAmenity(), HttpStatus.OK);
     }
     @PostMapping("/add-update")
