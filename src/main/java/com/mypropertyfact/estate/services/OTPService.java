@@ -27,7 +27,7 @@ public class OTPService {
 
     public String generateOTP(String email, OtpPurpose purpose) {
         String normalizedEmail = ConsumerEmailNormalizer.normalize(email);
-        String otpCode = String.format("%06d", new Random().nextInt(999999));
+        String otpCode = String.format("%04d", new Random().nextInt(10000));
 
         OTP otp = new OTP();
         otp.setEmail(normalizedEmail);

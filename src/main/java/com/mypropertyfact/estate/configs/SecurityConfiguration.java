@@ -48,7 +48,8 @@ public class SecurityConfiguration {
             "https://mypropertyfact.in",
             "https://www.mypropertyfact.in",
             "https://mypropertyfact.com",
-            "https://www.mypropertyfact.com");
+            "https://www.mypropertyfact.com",
+            "https://*.vercel.app");
 
     private final AuthenticationProvider authenticationProvider;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

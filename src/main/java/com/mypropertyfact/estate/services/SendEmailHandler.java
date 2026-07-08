@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.concurrent.CompletableFuture;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -23,9 +25,14 @@ public class SendEmailHandler {
             helper.setSubject(subject);
             helper.setText(body, true);
             javaMailSender.send(message);
-            log.info("Email sent successfully...");
+            log.info("Email sent successfully to {}", to);
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error("Failed to send email to {}: {}", to, e.getMessage(), e);
         }
+    }
+
+    /** Fire-and-forget so auth endpoints return immediately without blocking on SMTP. */
+    public void sendEmailAsync(String to, String subject, String body) {
+        CompletableFuture.runAsync(() -> sendEmail(to, subject, body));
     }
 }

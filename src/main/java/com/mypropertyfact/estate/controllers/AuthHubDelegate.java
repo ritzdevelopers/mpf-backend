@@ -344,7 +344,7 @@ public class AuthHubDelegate {
                             Enter this One-Time Password (OTP) in the app or website to continue \
                             securely.<br><br>\
                             If you did not request this code, you can safely ignore this email.""");
-            sendEmailHandler.sendEmail(canonicalEmail, "Your My Property Fact sign-in code", body);
+            sendEmailHandler.sendEmailAsync(canonicalEmail, "Your My Property Fact sign-in code", body);
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "OTP sent successfully",
@@ -555,7 +555,7 @@ public class AuthHubDelegate {
                     """
                             You're one step away from joining My Property Fact. Enter this code \
                             to confirm your email and finish creating your account.""");
-            sendEmailHandler.sendEmail(canonicalEmail, "Verify your My Property Fact registration", body);
+            sendEmailHandler.sendEmailAsync(canonicalEmail, "Verify your My Property Fact registration", body);
 
             return ResponseEntity.ok(Map.of(
                     "success", true,
@@ -642,7 +642,7 @@ public class AuthHubDelegate {
                             We received a request to reset your password. Enter this code to verify \
                             it's you before choosing a new password.<br><br>\
                             If you didn't ask for this, you can ignore this email.""");
-            sendEmailHandler.sendEmail(canonicalEmail, "Reset your My Property Fact password", html);
+            sendEmailHandler.sendEmailAsync(canonicalEmail, "Reset your My Property Fact password", html);
 
             return ResponseEntity.ok(Map.of(
                     "success", true,
