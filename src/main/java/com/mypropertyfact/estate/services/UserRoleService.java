@@ -232,4 +232,46 @@ public class UserRoleService {
         user.setRoles(new HashSet<>());
         return userRepository.save(user);
     }
+
+    @Transactional
+    public User assignPortalPersona(Integer userId, String userType) {
+        String normalized = userType == null ? "" : userType.trim().toUpperCase();
+        String roleName = switch (normalized) {
+            case "OWNER", "PROPERTY_OWNER" -> "OWNER";
+            case "BROKER" -> "BROKER";
+            default -> throw new IllegalArgumentException("userType must be OWNER or BROKER");
+        };
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Set<MasterRole> roles = new HashSet<>();
+        masterRoleRepository.findByRoleNameIgnoreCase(roleName)
+                .ifPresentOrElse(roles::add, () -> {
+                    MasterRole role = new MasterRole();
+                    role.setRoleName(roleName);
+                    role.setDescription("Portal " + roleName.toLowerCase() + " role");
+                    role.setIsActive(true);
+                    roles.add(masterRoleRepository.save(role));
+                });
+        user.setRoles(roles);
+        user.setAdminStaffApproved(true);
+        return userRepository.save(user);
+    }
+
+    public String resolvePortalPersonaLabel(User user) {
+        if (user.getRoles() != null) {
+            for (MasterRole role : user.getRoles()) {
+                if (role != null && "OWNER".equalsIgnoreCase(role.getRoleName())) {
+                    return "OWNER";
+                }
+            }
+            for (MasterRole role : user.getRoles()) {
+                if (role != null && "BROKER".equalsIgnoreCase(role.getRoleName())) {
+                    return "BROKER";
+                }
+            }
+        }
+        return "BROKER";
+    }
 }

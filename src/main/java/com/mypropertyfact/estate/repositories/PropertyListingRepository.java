@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 public interface PropertyListingRepository extends JpaRepository<PropertyListing, Long> {
@@ -59,6 +60,22 @@ public interface PropertyListingRepository extends JpaRepository<PropertyListing
 
     // Count listings by user
     long countByUserId(Integer userId);
+
+    long countByUserIdAndApprovalStatus(Integer userId, ProjectApprovalStatus status);
+
+    long countByUserIdAndCreatedAtAfter(Integer userId, LocalDateTime since);
+
+    @Query("SELECT COUNT(DISTINCT pl.city.id) FROM PropertyListing pl WHERE pl.user.id = :userId AND pl.city IS NOT NULL")
+    long countDistinctCitiesByUserId(@Param("userId") Integer userId);
+
+    @Query("SELECT COUNT(DISTINCT pl.builder.id) FROM PropertyListing pl WHERE pl.user.id = :userId AND pl.builder IS NOT NULL")
+    long countDistinctBuildersByUserId(@Param("userId") Integer userId);
+
+    @Query("SELECT COUNT(DISTINCT a.id) FROM PropertyListing pl JOIN pl.amenities a WHERE pl.user.id = :userId")
+    long countDistinctAmenitiesByUserId(@Param("userId") Integer userId);
+
+    @Query("SELECT COUNT(DISTINCT pl.subType) FROM PropertyListing pl WHERE pl.user.id = :userId AND pl.subType IS NOT NULL AND pl.subType <> ''")
+    long countDistinctPropertyTypesByUserId(@Param("userId") Integer userId);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE PropertyListing pl SET pl.approvedBy = null WHERE pl.approvedBy.id = :userId")

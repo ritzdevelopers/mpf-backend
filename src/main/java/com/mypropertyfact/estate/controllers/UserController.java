@@ -23,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import com.mypropertyfact.estate.repositories.UserRepository;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -99,6 +100,33 @@ public class UserController {
         log.info("User profile updated successfully for user: {}", savedUser.getEmail());
         
         return ResponseEntity.ok(savedUser);
+    }
+
+    @PutMapping("/me/persona")
+    public ResponseEntity<?> setPortalPersona(@RequestBody Map<String, String> body) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String userType = body != null ? body.get("userType") : null;
+        if (userType == null || userType.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "userType is required"));
+        }
+        try {
+            User updated = userRoleService.assignPortalPersona(currentUser.getId(), userType.trim());
+            String label = userRoleService.resolvePortalPersonaLabel(updated);
+            Map<String, Object> userMap = new HashMap<>();
+            userMap.put("id", updated.getId());
+            userMap.put("fullName", updated.getFullName() != null ? updated.getFullName() : "");
+            userMap.put("email", updated.getEmail() != null ? updated.getEmail() : "");
+            userMap.put("userType", label);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Portal persona updated",
+                    "userType", label,
+                    "user", userMap));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        }
     }
 
     @GetMapping

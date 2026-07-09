@@ -225,6 +225,8 @@ public class AuthHubDelegate {
                         : (email != null ? email.split("@")[0] : "User");
                 registerUserDto.setFullName(userFullName);
                 registerUserDto.setPassword(UUID.randomUUID().toString()); // random password since using Google login
+                String portalRole = resolvePortalRoleName(tokenRequest.getUserType());
+                registerUserDto.setRole(portalRole);
                 user = authenticationService.signupWithoutPassword(registerUserDto);
             }
             String jwtToken = jwtService.generateToken(user);
@@ -430,16 +432,16 @@ public class AuthHubDelegate {
                 String randomPassword = UUID.randomUUID().toString();
                 user.setPassword(passwordEncoder.encode(randomPassword));
 
-                // Set default USER role
+                // Set portal role (BROKER / OWNER) for new users
                 Set<MasterRole> roles = new HashSet<>();
-                masterRoleRepository.findByRoleNameIgnoreCase("USER")
+                String portalRole = resolvePortalRoleName(request.get("userType"));
+                masterRoleRepository.findByRoleNameIgnoreCase(portalRole)
                         .ifPresentOrElse(
                                 roles::add,
                                 () -> {
-                                    // Create USER role if it doesn't exist
                                     MasterRole userRole = new MasterRole();
-                                    userRole.setRoleName("USER");
-                                    userRole.setDescription("Default user role");
+                                    userRole.setRoleName(portalRole);
+                                    userRole.setDescription("Portal " + portalRole.toLowerCase() + " role");
                                     userRole.setIsActive(true);
                                     roles.add(masterRoleRepository.save(userRole));
                                 });
@@ -482,6 +484,7 @@ public class AuthHubDelegate {
             userMap.put("email", user.getEmail() != null ? user.getEmail() : "");
             userMap.put("role", roleNames.isEmpty() ? "ROLE_USER" : roleNames.get(0));
             userMap.put("roles", roleNames);
+            userMap.put("userType", resolveUserTypeLabel(user));
             userMap.put("verified", user.getVerified() != null ? user.getVerified() : false);
             response.put("user", userMap);
 
@@ -685,6 +688,40 @@ public class AuthHubDelegate {
 
     private boolean isDevProfile() {
         return activeProfile != null && activeProfile.contains("dev");
+    }
+
+    /** Normalize portal persona from client request to MasterRole name. */
+    private String resolvePortalRoleName(String userType) {
+        if (userType == null || userType.isBlank()) {
+            return "BROKER";
+        }
+        String normalized = userType.trim().toUpperCase(Locale.ROOT)
+                .replace("ROLE_", "");
+        return switch (normalized) {
+            case "OWNER", "PROPERTY_OWNER" -> "OWNER";
+            case "BROKER" -> "BROKER";
+            default -> "BROKER";
+        };
+    }
+
+    /** Derive display label for portal persona from assigned roles. */
+    private String resolveUserTypeLabel(User user) {
+        if (user.getRoles() == null || user.getRoles().isEmpty()) {
+            return "BROKER";
+        }
+        for (MasterRole role : user.getRoles()) {
+            if (role == null || role.getRoleName() == null) continue;
+            String name = role.getRoleName().toUpperCase(Locale.ROOT);
+            if ("OWNER".equals(name) || "PROPERTY_OWNER".equals(name)) {
+                return "OWNER";
+            }
+        }
+        for (MasterRole role : user.getRoles()) {
+            if (role != null && "BROKER".equalsIgnoreCase(role.getRoleName())) {
+                return "BROKER";
+            }
+        }
+        return "BROKER";
     }
 
     private ResponseEntity<Map<String, Object>> otpSentResponse(String otpCode) {
