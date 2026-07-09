@@ -64,6 +64,9 @@ public class AuthHubDelegate {
 
     @Value("${google.client.id}")
     private String googleClientId;
+
+    @Value("${spring.profiles.active:}")
+    private String activeProfile;
     private final JwtService jwtService;
     private final AuthenticationService authenticationService;
     private final UserRoleService userRoleService;
@@ -344,13 +347,10 @@ public class AuthHubDelegate {
                             Enter this One-Time Password (OTP) in the app or website to continue \
                             securely.<br><br>\
                             If you did not request this code, you can safely ignore this email.""");
-            sendEmailHandler.sendEmailAsync(canonicalEmail, "Your My Property Fact sign-in code", body);
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "OTP sent successfully",
-                    // "otp", otpCode,
-                    "expiresIn", 300 // 5 minutes
-            ));
+            if (!sendEmailHandler.sendEmail(canonicalEmail, "Your My Property Fact sign-in code", body)) {
+                return otpEmailDeliveryFailed();
+            }
+            return otpSentResponse(otpCode);
 
         } catch (IllegalArgumentException e) {
             // User-friendly validation errors
@@ -555,12 +555,11 @@ public class AuthHubDelegate {
                     """
                             You're one step away from joining My Property Fact. Enter this code \
                             to confirm your email and finish creating your account.""");
-            sendEmailHandler.sendEmailAsync(canonicalEmail, "Verify your My Property Fact registration", body);
+            if (!sendEmailHandler.sendEmail(canonicalEmail, "Verify your My Property Fact registration", body)) {
+                return otpEmailDeliveryFailed();
+            }
 
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "OTP sent successfully",
-                    "expiresIn", 300));
+            return otpSentResponse(otpCode);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
@@ -642,12 +641,11 @@ public class AuthHubDelegate {
                             We received a request to reset your password. Enter this code to verify \
                             it's you before choosing a new password.<br><br>\
                             If you didn't ask for this, you can ignore this email.""");
-            sendEmailHandler.sendEmailAsync(canonicalEmail, "Reset your My Property Fact password", html);
+            if (!sendEmailHandler.sendEmail(canonicalEmail, "Reset your My Property Fact password", html)) {
+                return otpEmailDeliveryFailed();
+            }
 
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "OTP sent successfully",
-                    "expiresIn", 300));
+            return otpSentResponse(otpCode);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
@@ -683,6 +681,30 @@ public class AuthHubDelegate {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", "Unable to reset password. Please try again."));
         }
+    }
+
+    private boolean isDevProfile() {
+        return activeProfile != null && activeProfile.contains("dev");
+    }
+
+    private ResponseEntity<Map<String, Object>> otpSentResponse(String otpCode) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("message", "OTP sent successfully");
+        body.put("expiresIn", 300);
+        if (isDevProfile()) {
+            body.put("otp", otpCode);
+        }
+        return ResponseEntity.ok(body);
+    }
+
+    private ResponseEntity<Map<String, Object>> otpEmailDeliveryFailed() {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of(
+                        "success", false,
+                        "error", "Failed to send OTP",
+                        "message",
+                        "We couldn't deliver the OTP to your email. Please check the address or try again shortly."));
     }
 
     /**
