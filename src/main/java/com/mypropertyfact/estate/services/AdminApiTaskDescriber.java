@@ -171,6 +171,12 @@ public final class AdminApiTaskDescriber {
             }
             return "View live traffic summary";
         }
+        if (path.contains("/api/v1/admin/super/search-reports")) {
+            if (path.contains("/export")) {
+                return "Download search report Excel";
+            }
+            return "View search reports";
+        }
         if (path.contains("/api/v1/admin/super/audit-logs")) {
             return "View admin audit logs";
         }
