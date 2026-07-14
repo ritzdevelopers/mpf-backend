@@ -72,11 +72,36 @@ public class ProjectService {
     }
 
     private float[] getBudgetRange(String budget) {
-        return switch (budget) {
-            case "Up to 1Cr*" -> new float[] { 0, 1 };
-            case "1-3 Cr*" -> new float[] { 1, 3 };
-            case "3-5 Cr*" -> new float[] { 3, 5 };
-            case "Above 5 Cr*" -> new float[] { 5, 20 };
+        if (budget == null || budget.isBlank()) {
+            return new float[] { 0, 20 };
+        }
+        String normalized = budget.trim()
+                .replace("₹", "")
+                .replace("–", "-")
+                .replace("—", "-")
+                .replaceAll("\\s+", " ")
+                .toLowerCase();
+
+        // Accept website, chat, and API budget labels used by the chatbot / filters.
+        if (normalized.contains("up to") && normalized.contains("1")) {
+            return new float[] { 0, 1 };
+        }
+        if ((normalized.contains("1-3") || normalized.contains("1cr-3cr") || normalized.contains("1 cr - 3"))
+                && !normalized.contains("up to")) {
+            return new float[] { 1, 3 };
+        }
+        if (normalized.contains("3-5") || normalized.contains("3cr-5cr") || normalized.contains("3 cr - 5")) {
+            return new float[] { 3, 5 };
+        }
+        if (normalized.contains("above") && normalized.contains("5")) {
+            return new float[] { 5, 20 };
+        }
+
+        return switch (budget.trim()) {
+            case "Up to 1Cr*", "Up to 1Cr", "Up to ₹1 Cr" -> new float[] { 0, 1 };
+            case "1-3 Cr*", "1Cr-3Cr", "₹1 Cr – ₹3 Cr", "₹1 Cr - ₹3 Cr" -> new float[] { 1, 3 };
+            case "3-5 Cr*", "3Cr-5Cr", "₹3 Cr – ₹5 Cr", "₹3 Cr - ₹5 Cr" -> new float[] { 3, 5 };
+            case "Above 5 Cr*", "Above 5Cr", "Above ₹5 Cr" -> new float[] { 5, 20 };
             default -> new float[] { 0, 20 };
         };
     }
