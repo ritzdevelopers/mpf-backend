@@ -29,6 +29,7 @@ public class EnquiryService {
 
     private final PropertyListingRepository propertyListingRepository;
     private final LeadService leadService;
+    private final CrmIntegrationService crmIntegrationService;
     private static final String SOURCE_WEBSITE = "WEBSITE";
     private static final String SOURCE_APP = "APP";
 
@@ -61,37 +62,43 @@ public class EnquiryService {
                     dbEnquery.setEnquiryFrom(source);
                     dbEnquery.setProjectLink(enquery.getProjectLink());
                     dbEnquery.setPropertyId(enquery.getPropertyId());
-                    enqueryRepository.save(dbEnquery);
+                    Enquery saved = enqueryRepository.save(dbEnquery);
                     response.setIsSuccess(1);
                     leadService.createLead(
-                            enquery.getName(),
-                            enquery.getPhone(),
-                            enquery.getEmail(),
-                            enquery.getPageName(),
+                            saved.getName(),
+                            saved.getPhone(),
+                            saved.getEmail(),
+                            saved.getPageName(),
                             "lead",
                             source,
-                            enquery.getProjectLink()
+                            saved.getProjectLink()
                     );
+                    crmIntegrationService.pushEnquiry(saved);
                     response.setMessage("Data updated successfully...");
                 } else {
                     response.setMessage("No data found !!");
                 }
             } else {
-                enqueryRepository.save(enquery);
-//                sendEmailHandler.sendEmail(enquery.getEmail(), "Thank you for giving details",
+                Enquery saved = enqueryRepository.save(enquery);
+//                sendEmailHandler.sendEmail(saved.getEmail(), "Thank you for giving details",
 //                        "Hi, Thank you out team will get back to you");
                 try {
                     leadService.createLead(
-                            enquery.getName(),
-                            enquery.getPhone(),
-                            enquery.getEmail(),
-                            enquery.getPageName(),
+                            saved.getName(),
+                            saved.getPhone(),
+                            saved.getEmail(),
+                            saved.getPageName(),
                             "lead",
                             source,
-                            enquery.getProjectLink()
+                            saved.getProjectLink()
                     );
                 } catch (Exception ignored) {
                     // Keep existing enquiry flow unchanged if Telegram fails.
+                }
+                try {
+                    crmIntegrationService.pushEnquiry(saved);
+                } catch (Exception ignored) {
+                    // Keep existing enquiry flow unchanged if CRM push fails.
                 }
                 response.setIsSuccess(1);
                 response.setMessage("Data saved successfully...");

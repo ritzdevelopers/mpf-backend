@@ -8,12 +8,14 @@ import com.mypropertyfact.estate.services.EnquiryAccessService;
 import com.mypropertyfact.estate.services.EnquiryService;
 import lombok.RequiredArgsConstructor;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,11 +29,23 @@ public class EnquiryController {
     private final EnquiryService enquiryService;
     private final EnquiryAccessService enquiryAccessService;
 
+    @Value("${crm.webhook.key:${MPF_CRM_WEBHOOK_KEY:}}")
+    private String crmExportKey;
+
     @GetMapping("/get-all")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<Enquery>> getAll(HttpServletRequest request) {
         User user = requireUser();
         assertEnquiryAccess(user, request);
+        return new ResponseEntity<>(enquiryService.getAll(), HttpStatus.OK);
+    }
+
+    @GetMapping("/crm-export")
+    public ResponseEntity<List<Enquery>> crmExport(HttpServletRequest request) {
+        String key = request.getHeader("x-mpf-crm-key");
+        if (!StringUtils.hasText(crmExportKey) || !crmExportKey.equals(key)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         return new ResponseEntity<>(enquiryService.getAll(), HttpStatus.OK);
     }
 
