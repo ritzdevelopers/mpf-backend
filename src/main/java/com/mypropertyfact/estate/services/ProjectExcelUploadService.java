@@ -9,7 +9,9 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -63,6 +65,10 @@ public class ProjectExcelUploadService {
     @Autowired
     private LocationBenefitRepository locationBenefitRepository;
 
+    @Autowired
+    @Lazy
+    private ProjectExcelUploadService self;
+
     private static final int GALLERY_W = 1600;
     private static final int GALLERY_H = 1200;
     private static final int DESKTOP_W = 2508;
@@ -74,7 +80,6 @@ public class ProjectExcelUploadService {
     private static final int PROJECT_LOCATION_WIDTH = 1200;
     private static final int PROJECT_LOCATION_HEIGHT = 800;
 
-    @Transactional(rollbackFor = Exception.class)
     public Response uploadProjectsExcel(MultipartFile excelFile, MultipartFile imagesZip) {
         Response response = new Response();
         if (excelFile == null || excelFile.isEmpty()) {
@@ -121,92 +126,48 @@ public class ProjectExcelUploadService {
                 if (row == null)
                     continue;
 
+                String projectName = getCell(colIndex, row, "PROJECT NAME");
+                if (projectName == null || projectName.trim().isEmpty()) {
+                    errors.add("Row " + (r + 1) + ": Project name is required");
+                    continue;
+                }
+
                 try {
-                    String projectName = getCell(colIndex, row, "PROJECT NAME");
-                    if (projectName == null || projectName.trim().isEmpty()) {
-                        errors.add("Row " + (r + 1) + ": Project name is required");
+                    RowProcessOutcome outcome = self.processProjectRowInNewTransaction(
+                            row, colIndex, projectName.trim(), r + 1);
+                    if (outcome.error != null) {
+                        errors.add(outcome.error);
                         continue;
                     }
-
-                    Project project = resolveOrCreateProject(row, colIndex, projectName.trim(), errors, r + 1);
-                    if (project == null)
-                        continue;
-
-                    String slug = project.getSlugURL();
-                    if (slug == null || slug.isEmpty()) {
-                        slug = fileUtils.generateSlug(projectName);
-                        project.setSlugURL(slug);
-                    }
-
-                    boolean isNew = project.getId() == 0;
-                    projectRepository.save(project);
-
-                    // Project walkthrough (text from Excel only)
-                    Optional<ProjectWalkthrough> existingWalkthrough =
-                            projectWalkthroughRepository.findFirstByProject_IdOrderByIdDesc(project.getId());
-                    if (existingWalkthrough.isEmpty()) {
-                        String walkthroughDesc = getCell(colIndex, row, "PROJECT WALKTHROUGH DESCRIPTION");
-                        if (walkthroughDesc != null && !walkthroughDesc.trim().isEmpty()) {
-                            ProjectWalkthrough projectWalkthrough = new ProjectWalkthrough();
-                            projectWalkthrough.setWalkthroughDesc(walkthroughDesc.trim());
-                            projectWalkthrough.setProject(project);
-                            projectWalkthroughRepository.save(projectWalkthrough);
-                        }
-                    }
-
-                    // About / overview (text from Excel only)
-                    String aboutDesc = getCell(colIndex, row,  "PROJECT ABOUT SHORT DESCRIPTION");
-                    if (aboutDesc != null && !aboutDesc.trim().isEmpty()) {
-                        ProjectsAbout about = projectAboutRepository
-                                .findFirstByProject_IdOrderByIdDesc(project.getId()).orElse(null);
-                        if (about == null) {
-                            about = new ProjectsAbout();
-                            about.setProject(project);
-                        }
-                        about.setLongDesc(aboutDesc.trim());
-                        projectAboutRepository.save(about);
-                    }
-
-                    // Floor plans from PROJECT CONFIGURATION (e.g. "3 BHK-1333 sq.ft, 4 BHK-1744 sq.ft")
-                    String projectConfiguration = getCell(colIndex, row, "PROJECT CONFIGURATION");
-                    if (projectConfiguration != null && !projectConfiguration.trim().isEmpty()) {
-                        saveFloorPlansFromConfiguration(project, projectConfiguration.trim());
-                    }
-
-                    // Project amenities from column (e.g. "Swimming-Pool_Gymnasium_Club-House_Waiting-Lounge") – split by _ and link from amenities table
-                    String projectAmenities = getCellWithFallback(colIndex, row, "PROJECT AMENITIES", "PROJECT Amenities");
-                    if (projectAmenities != null && !projectAmenities.trim().isEmpty()) {
-                        linkAmenitiesFromColumn(project, projectAmenities.trim());
-                    }
-
-                    // Location advantages (e.g. "Hyatt-Regency-Gurugram-4.2-Km_Entertainland-Mall-4.4-Km_") – split by _, parse name and distance per segment
-                    String locationAdvantage = getCell(colIndex, row, "LOCATION ADVANTAGE");
-                    if (locationAdvantage != null && !locationAdvantage.trim().isEmpty()) {
-                        saveLocationAdvantagesFromColumn(project, locationAdvantage.trim());
-                    }
-
-                    // FAQs from Question 1, Answer 1, Question 2, Answer 2, ...
-                    saveFaqsFromRow(project, row, colIndex);
-
-                    if (isNew)
+                    if (outcome.created) {
                         created++;
-                    else
+                    } else if (outcome.updated) {
                         updated++;
-
+                    }
                 } catch (Exception e) {
                     errors.add("Row " + (r + 1) + ": " + e.getMessage());
-                    log.warn("Row {} error: {}", r + 1, e.getMessage());
+                    log.warn("Row {} error: {}", r + 1, e.getMessage(), e);
                 }
             }
 
             // Process images only from zip (filename format: ProjectName-123_ImageType_My-Property-Fact)
+            int imagesProcessed = 0;
+            int imagesSkipped = 0;
             if (!imageMap.isEmpty()) {
-                int imagesProcessed = processZipImages(imageMap);
-                log.info("Processed {} images from zip", imagesProcessed);
+                int[] imageStats = processZipImages(imageMap);
+                imagesProcessed = imageStats[0];
+                imagesSkipped = imageStats[1];
+                log.info("Processed {} images from zip ({} skipped)", imagesProcessed, imagesSkipped);
             }
 
             StringBuilder msg = new StringBuilder();
             msg.append("Upload completed. Created: ").append(created).append(", Updated: ").append(updated);
+            if (!imageMap.isEmpty()) {
+                msg.append(". Images saved: ").append(imagesProcessed);
+                if (imagesSkipped > 0) {
+                    msg.append(", images skipped (no matching project): ").append(imagesSkipped);
+                }
+            }
             if (!errors.isEmpty()) {
                 msg.append(". Errors: ").append(errors.size()).append(" - ")
                         .append(String.join("; ", errors.subList(0, Math.min(10, errors.size()))));
@@ -226,18 +187,132 @@ public class ProjectExcelUploadService {
     }
 
     /**
+     * Each Excel row runs in its own transaction so a failure on one row does not mark the
+     * whole bulk upload as rollback-only.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
+    public RowProcessOutcome processProjectRowInNewTransaction(
+            Row row, Map<String, Integer> colIndex, String projectName, int rowNum) {
+        List<String> rowErrors = new ArrayList<>();
+        Project project = resolveOrCreateProject(row, colIndex, projectName, rowErrors, rowNum);
+        if (project == null) {
+            String message = rowErrors.isEmpty()
+                    ? "Row " + rowNum + ": Could not resolve project"
+                    : rowErrors.get(0);
+            return RowProcessOutcome.error(message);
+        }
+
+        String slug = project.getSlugURL();
+        if (slug == null || slug.isEmpty()) {
+            slug = fileUtils.generateSlug(projectName);
+            project.setSlugURL(slug);
+        }
+
+        boolean isNew = project.getId() == 0;
+        projectRepository.save(project);
+
+        Optional<ProjectWalkthrough> existingWalkthrough =
+                projectWalkthroughRepository.findFirstByProject_IdOrderByIdDesc(project.getId());
+        if (existingWalkthrough.isEmpty()) {
+            String walkthroughDesc = getCell(colIndex, row, "PROJECT WALKTHROUGH DESCRIPTION");
+            if (walkthroughDesc != null && !walkthroughDesc.trim().isEmpty()) {
+                ProjectWalkthrough projectWalkthrough = new ProjectWalkthrough();
+                projectWalkthrough.setWalkthroughDesc(walkthroughDesc.trim());
+                projectWalkthrough.setProject(project);
+                projectWalkthroughRepository.save(projectWalkthrough);
+            }
+        }
+
+        String aboutDesc = getCell(colIndex, row, "PROJECT ABOUT SHORT DESCRIPTION");
+        if (aboutDesc != null && !aboutDesc.trim().isEmpty()) {
+            ProjectsAbout about = projectAboutRepository
+                    .findFirstByProject_IdOrderByIdDesc(project.getId()).orElse(null);
+            if (about == null) {
+                about = new ProjectsAbout();
+                about.setProject(project);
+            }
+            about.setLongDesc(aboutDesc.trim());
+            projectAboutRepository.save(about);
+        }
+
+        String projectConfiguration = getCell(colIndex, row, "PROJECT CONFIGURATION");
+        if (projectConfiguration != null && !projectConfiguration.trim().isEmpty()) {
+            saveFloorPlansFromConfiguration(project, projectConfiguration.trim());
+        }
+
+        String projectAmenities = getCellWithFallback(colIndex, row, "PROJECT AMENITIES", "PROJECT Amenities");
+        if (projectAmenities != null && !projectAmenities.trim().isEmpty()) {
+            linkAmenitiesFromColumn(project, projectAmenities.trim());
+        }
+
+        String locationAdvantage = getCell(colIndex, row, "LOCATION ADVANTAGE");
+        if (locationAdvantage != null && !locationAdvantage.trim().isEmpty()) {
+            saveLocationAdvantagesFromColumn(project, locationAdvantage.trim());
+        }
+
+        saveFaqsFromRow(project, row, colIndex);
+
+        return isNew ? RowProcessOutcome.created() : RowProcessOutcome.updated();
+    }
+
+    private static final class RowProcessOutcome {
+        private final String error;
+        private final boolean created;
+        private final boolean updated;
+
+        private RowProcessOutcome(String error, boolean created, boolean updated) {
+            this.error = error;
+            this.created = created;
+            this.updated = updated;
+        }
+
+        static RowProcessOutcome error(String error) {
+            return new RowProcessOutcome(error, false, false);
+        }
+
+        static RowProcessOutcome created() {
+            return new RowProcessOutcome(null, true, false);
+        }
+
+        static RowProcessOutcome updated() {
+            return new RowProcessOutcome(null, false, true);
+        }
+    }
+
+    /**
      * Process images from the zip map. Filename format: {@code ProjectName-123_ImageType_My-Property-Fact}
      * First segment = project identifier (with hyphens), second = image type (e.g. Gallery-2, Opening-1), third = ignored.
      * Images are saved under the project folder with unique names and generated alt tags.
      */
-    private int processZipImages(Map<String, byte[]> imageMap) {
+    /** @return int[]{savedCount, skippedCount} */
+    private int[] processZipImages(Map<String, byte[]> imageMap) {
         int count = 0;
+        int skipped = 0;
         for (Map.Entry<String, byte[]> entry : imageMap.entrySet()) {
             String filename = entry.getKey();
             byte[] data = entry.getValue();
             if (data == null || data.length == 0)
                 continue;
 
+            try {
+                int saved = self.saveZipImageInNewTransaction(filename, data);
+                if (saved > 0) {
+                    count += saved;
+                } else if (saved < 0) {
+                    skipped++;
+                }
+            } catch (Exception e) {
+                log.warn("Could not save zip image '{}': {}", filename, e.getMessage());
+            }
+        }
+        return new int[]{count, skipped};
+    }
+
+    /**
+     * @return 1 if saved, 0 if skipped (format/no-op), -1 if no matching project
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
+    public int saveZipImageInNewTransaction(String filename, byte[] data) {
             String baseName = filename;
             if (baseName.contains("/"))
                 baseName = baseName.substring(baseName.lastIndexOf('/') + 1);
@@ -248,20 +323,19 @@ public class ProjectExcelUploadService {
             String[] parts = baseName.split("_");
             if (parts.length < 2) {
                 log.debug("Skipping zip file (expected format ProjectName_ImageType_*): {}", filename);
-                continue;
+                return 0;
             }
 
-            String projectKey = parts[0].trim();   // e.g. Ozar-96
-            String imageType = parts[1].trim();    // e.g. Gallery-2, Opening-1
+            String projectKey = parts[0].trim();
+            String imageType = parts[1].trim();
 
             if (projectKey.isEmpty() || imageType.isEmpty())
-                continue;
+                return 0;
 
-            String slugFromZip = fileUtils.generateSlug(projectKey.replace("-", " "));
-            Optional<Project> projectOpt = projectRepository.findBySlugURL(slugFromZip);
+            Optional<Project> projectOpt = resolveProjectFromZipKey(projectKey);
             if (projectOpt.isEmpty()) {
-                log.debug("No project found for slug '{}' (from zip name '{}'), skipping image", slugFromZip, filename);
-                continue;
+                log.debug("No project found for zip key '{}' (file '{}'), skipping image", projectKey, filename);
+                return -1;
             }
 
             Project project = projectOpt.get();
@@ -276,7 +350,7 @@ public class ProjectExcelUploadService {
             if (imageType.toLowerCase().startsWith("gallery")) {
                 boolean alreadyExists = projectGalleryRepository.findBySlugUrl(slug).stream()
                         .anyMatch(g -> altTag.equals(g.getAltTag()));
-                if (alreadyExists) continue;
+                if (alreadyExists) return 0;
                 String saved = fileUtils.saveImageFromBytes(data, uniqueBaseName, projectDir, GALLERY_W, GALLERY_H);
                 if (saved != null) {
                     ProjectGallery gallery = new ProjectGallery();
@@ -286,12 +360,12 @@ public class ProjectExcelUploadService {
                     gallery.setType("gallery");
                     gallery.setAltTag(altTag);
                     projectGalleryRepository.save(gallery);
-                    count++;
+                    return 1;
                 }
             } else if (imageType.toLowerCase().startsWith("desktop")) {
                 boolean alreadyExists = projectDesktopBannerRepository.findByProject(project).stream()
                         .anyMatch(b -> altTag.equals(b.getDesktopAltTag()));
-                if (alreadyExists) continue;
+                if (alreadyExists) return 0;
                 String saved = fileUtils.saveImageFromBytes(data, uniqueBaseName, projectDir, DESKTOP_W, DESKTOP_H);
                 if (saved != null) {
                     ProjectDesktopBanner banner = new ProjectDesktopBanner();
@@ -299,12 +373,12 @@ public class ProjectExcelUploadService {
                     banner.setDesktopImage(saved);
                     banner.setDesktopAltTag(altTag);
                     projectDesktopBannerRepository.save(banner);
-                    count++;
+                    return 1;
                 }
             } else if (imageType.toLowerCase().startsWith("mobile")) {
                 boolean alreadyExists = projectMobileBannerRepository.findByProject(project).stream()
                         .anyMatch(b -> altTag.equals(b.getMobileAltTag()));
-                if (alreadyExists) continue;
+                if (alreadyExists) return 0;
                 String saved = fileUtils.saveImageFromBytes(data, uniqueBaseName, projectDir, MOBILE_W, MOBILE_H);
                 if (saved != null) {
                     ProjectMobileBanner banner = new ProjectMobileBanner();
@@ -312,37 +386,36 @@ public class ProjectExcelUploadService {
                     banner.setMobileImage(saved);
                     banner.setMobileAltTag(altTag);
                     projectMobileBannerRepository.save(banner);
-                    count++;
+                    return 1;
                 }
             } else if (imageType.toLowerCase().startsWith("logo")) {
-                if (project.getProjectLogo() != null && !project.getProjectLogo().isBlank()) continue;
+                if (project.getProjectLogo() != null && !project.getProjectLogo().isBlank()) return 0;
                 String saved = fileUtils.saveImageFromBytes(data, uniqueBaseName, projectDir, PROJECT_LOGO_WIDTH, PROJECT_LOGO_HEIGHT);
                 if (saved != null) {
                     project.setProjectLogo(saved);
                     projectRepository.save(project);
-                    count++;
+                    return 1;
                 }
             } else if (imageType.toLowerCase().startsWith("location")) {
-                if (project.getLocationMap() != null && !project.getLocationMap().isBlank()) continue;
+                if (project.getLocationMap() != null && !project.getLocationMap().isBlank()) return 0;
                 String saved = fileUtils.saveImageFromBytes(data, uniqueBaseName, projectDir, PROJECT_LOCATION_WIDTH, PROJECT_LOCATION_HEIGHT);
                 if (saved != null) {
                     project.setLocationMap(saved);
                     projectRepository.save(project);
-                    count++;
+                    return 1;
                 }
             } else if (imageType.toLowerCase().startsWith("thumbnail")) {
-                if (project.getProjectThumbnail() != null && !project.getProjectThumbnail().isBlank()) continue;
+                if (project.getProjectThumbnail() != null && !project.getProjectThumbnail().isBlank()) return 0;
                 String saved = fileUtils.saveImageFromBytes(data, uniqueBaseName, projectDir, MOBILE_W, MOBILE_H);
                 if (saved != null) {
                     project.setProjectThumbnail(saved);
                     projectRepository.save(project);
-                    count++;
+                    return 1;
                 }
             } else {
-                // Default: save as gallery (only when not already present)
                 boolean alreadyExists = projectGalleryRepository.findBySlugUrl(slug).stream()
                         .anyMatch(g -> altTag.equals(g.getAltTag()));
-                if (alreadyExists) continue;
+                if (alreadyExists) return 0;
                 String saved = fileUtils.saveImageFromBytes(data, uniqueBaseName, projectDir, GALLERY_W, GALLERY_H);
                 if (saved != null) {
                     ProjectGallery gallery = new ProjectGallery();
@@ -352,11 +425,23 @@ public class ProjectExcelUploadService {
                     gallery.setType("gallery");
                     gallery.setAltTag(altTag);
                     projectGalleryRepository.save(gallery);
-                    count++;
+                    return 1;
                 }
             }
+            return 0;
+    }
+
+    private Optional<Project> resolveProjectFromZipKey(String projectKey) {
+        if (projectKey == null || projectKey.isBlank()) {
+            return Optional.empty();
         }
-        return count;
+        String nameGuess = projectKey.replace("-", " ").trim();
+        String slugFromZip = fileUtils.generateSlug(nameGuess);
+        Optional<Project> projectOpt = projectRepository.findBySlugURL(slugFromZip);
+        if (projectOpt.isPresent()) {
+            return projectOpt;
+        }
+        return projectRepository.findFirstByProjectNameIgnoreCase(nameGuess);
     }
 
     private static String sanitizeImageType(String imageType) {
@@ -559,14 +644,13 @@ public class ProjectExcelUploadService {
             amenities = new HashSet<>();
             project.setAmenities(amenities);
         }
-        for (String part : projectAmenities.split("_")) {
+        for (String part : splitListColumn(projectAmenities)) {
             String name = part.trim().replace("-", " ");
             if (name.isEmpty())
                 continue;
             Optional<Amenity> opt = amenityRepository.findByTitleIgnoreCase(name);
             if (opt.isEmpty()) {
-                String withSpaces = name.replace("-", " ");
-                opt = amenityRepository.findByTitleIgnoreCase(withSpaces);
+                opt = amenityRepository.findByTitleIgnoreCase(name.replace("-", " "));
             }
             opt.ifPresent(amenities::add);
         }
@@ -581,22 +665,44 @@ public class ProjectExcelUploadService {
         if (locationAdvantage == null || locationAdvantage.trim().isEmpty())
             return;
         locationBenefitRepository.deleteAll(locationBenefitRepository.findByProject(project));
-        Pattern locationPattern = Pattern.compile("^(.+)-([0-9]+(?:\\.[0-9]+)?)-Km$", Pattern.CASE_INSENSITIVE);
-        for (String part : locationAdvantage.split("_")) {
+        Pattern legacyPattern = Pattern.compile("^(.+)-([0-9]+(?:\\.[0-9]+)?)-Km$", Pattern.CASE_INSENSITIVE);
+        Pattern pipePattern = Pattern.compile("^(.+?)\\s*\\(([0-9]+(?:\\.[0-9]+)?)\\s*Km\\)\\s*$",
+                Pattern.CASE_INSENSITIVE);
+        for (String part : splitListColumn(locationAdvantage)) {
             String segment = part.trim();
             if (segment.isEmpty())
                 continue;
-            Matcher m = locationPattern.matcher(segment);
-            if (!m.matches())
+
+            String benefitName = null;
+            String distance = null;
+            Matcher legacyMatch = legacyPattern.matcher(segment);
+            if (legacyMatch.matches()) {
+                benefitName = legacyMatch.group(1).trim().replace("-", " ");
+                distance = legacyMatch.group(2) + " Km";
+            } else {
+                Matcher pipeMatch = pipePattern.matcher(segment);
+                if (pipeMatch.matches()) {
+                    benefitName = pipeMatch.group(1).trim();
+                    distance = pipeMatch.group(2) + " Km";
+                }
+            }
+            if (benefitName == null || benefitName.isEmpty())
                 continue;
-            String benefitName = m.group(1).trim().replace("-", " ");
-            String distance = m.group(2) + " Km";
+
             LocationBenefit lb = new LocationBenefit();
             lb.setProject(project);
             lb.setBenefitName(benefitName);
-            lb.setDistance(distance);
+            lb.setDistance(distance != null ? distance : "");
             locationBenefitRepository.save(lb);
         }
+    }
+
+    /** Supports underscore, pipe, and comma separated Excel values. */
+    private static String[] splitListColumn(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return new String[0];
+        }
+        return value.split("\\s*\\|\\s*|_|,");
     }
 
     /**
