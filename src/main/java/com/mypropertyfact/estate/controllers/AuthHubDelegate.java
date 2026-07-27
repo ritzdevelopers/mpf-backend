@@ -339,9 +339,11 @@ public class AuthHubDelegate {
                         .body(Map.of("error", "Email is required", "message", "Please enter your email"));
             }
 
+            String canonicalEmail = ConsumerEmailNormalizer.normalize(email);
+            boolean userExists = userRepository.findByEmailIgnoreCase(canonicalEmail).isPresent();
+
             // Generate and send OTP (validation + normalization inside OTPService)
             String otpCode = otpService.generateOTP(email);
-            String canonicalEmail = ConsumerEmailNormalizer.normalize(email);
             String body = buildBrandedOtpEmail(
                     otpCode,
                     "Your sign-in code",
@@ -352,7 +354,7 @@ public class AuthHubDelegate {
             if (!sendEmailHandler.sendEmail(canonicalEmail, "Your My Property Fact sign-in code", body)) {
                 return otpEmailDeliveryFailed();
             }
-            return otpSentResponse(otpCode);
+            return otpSentResponse(otpCode, userExists);
 
         } catch (IllegalArgumentException e) {
             // User-friendly validation errors
@@ -400,6 +402,23 @@ public class AuthHubDelegate {
                         .body(Map.of("error", e.getMessage(), "message", e.getMessage()));
             }
 
+            Optional<User> existingUser = userRepository.findByEmailIgnoreCase(canonicalEmail);
+            boolean isNewUser = existingUser.isEmpty();
+
+            if (isNewUser && (fullName == null || fullName.trim().isEmpty())) {
+                if (!otpService.isValidOTP(canonicalEmail, otpCode, OtpPurpose.MAGIC_LINK)) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(Map.of("error", "Invalid or expired OTP",
+                                    "message",
+                                    "The OTP you entered is incorrect or has expired. Please request a new OTP."));
+                }
+                return ResponseEntity.badRequest()
+                        .body(Map.of(
+                                "error", "full_name_required",
+                                "message",
+                                "Full name is required to create your account."));
+            }
+
             boolean isValid = otpService.verifyOTP(canonicalEmail, otpCode, OtpPurpose.MAGIC_LINK);
 
             if (!isValid) {
@@ -409,7 +428,6 @@ public class AuthHubDelegate {
                                 "The OTP you entered is incorrect or has expired. Please request a new OTP."));
             }
 
-            Optional<User> existingUser = userRepository.findByEmailIgnoreCase(canonicalEmail);
             User user;
             String userStatus;
 
@@ -417,13 +435,6 @@ public class AuthHubDelegate {
                 user = existingUser.get();
                 userStatus = "existing";
             } else {
-                if (fullName == null || fullName.trim().isEmpty()) {
-                    return ResponseEntity.badRequest()
-                            .body(Map.of(
-                                    "error", "full_name_required",
-                                    "message",
-                                    "Full name is required to create your account."));
-                }
                 user = new User();
                 user.setId(null);
                 user.setEmail(canonicalEmail);
@@ -725,10 +736,17 @@ public class AuthHubDelegate {
     }
 
     private ResponseEntity<Map<String, Object>> otpSentResponse(String otpCode) {
+        return otpSentResponse(otpCode, null);
+    }
+
+    private ResponseEntity<Map<String, Object>> otpSentResponse(String otpCode, Boolean userExists) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);
         body.put("message", "OTP sent successfully");
         body.put("expiresIn", 300);
+        if (userExists != null) {
+            body.put("userExists", userExists);
+        }
         if (isDevProfile()) {
             body.put("otp", otpCode);
         }
