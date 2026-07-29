@@ -166,10 +166,18 @@ public class User implements UserDetails {
 
         // Add authorities from MasterRole set (multiple roles support)
         if (roles != null && !roles.isEmpty()) {
+            boolean grantsAdminAlias = false;
             for (MasterRole masterRole : roles) {
                 if (masterRole != null && masterRole.getIsActive() != null && masterRole.getIsActive()) {
                     if (masterRole.getRoleName() != null) {
-                        authorities.add(new SimpleGrantedAuthority("ROLE_" + masterRole.getRoleName()));
+                        String roleName = masterRole.getRoleName().trim();
+                        authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName));
+                        if (!grantsAdminAlias
+                                && !"ADMIN".equalsIgnoreCase(roleName)
+                                && isLegacyStaffAdminRoleName(roleName)) {
+                            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+                            grantsAdminAlias = true;
+                        }
                     }
                 }
             }
@@ -182,6 +190,15 @@ public class User implements UserDetails {
         // }
         
         return authorities;
+    }
+
+    /** Legacy dashboard staff role names that should also grant {@code ROLE_ADMIN}. */
+    private static boolean isLegacyStaffAdminRoleName(String roleName) {
+        if (roleName == null || roleName.isBlank()) {
+            return false;
+        }
+        String n = roleName.trim().toUpperCase();
+        return !n.contains("SUPER") && "ADMINUSER".equals(n);
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.mypropertyfact.estate.configs;
 
 import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.services.JwtService;
+import com.mypropertyfact.estate.services.UserRoleService;
 import io.jsonwebtoken.ExpiredJwtException;
 
 import jakarta.servlet.FilterChain;
@@ -84,7 +85,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             boolean staffSessionVersioned = user.getRoles() != null && user.getRoles().stream()
                                     .anyMatch(r -> r != null && Boolean.TRUE.equals(r.getIsActive())
                                             && ("SUPERADMIN".equalsIgnoreCase(r.getRoleName())
-                                                    || "ADMIN".equalsIgnoreCase(r.getRoleName())));
+                                                    || UserRoleService.isStaffAdminRoleName(r.getRoleName())));
                             Integer tokenVersion = jwtService.extractTokenVersion(token);
                             Integer currentVersion = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
                             if (staffSessionVersioned) {

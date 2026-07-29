@@ -87,10 +87,10 @@ public class UserService{
                 if ("SUPERADMIN".equalsIgnoreCase(n)) {
                     throw new IllegalArgumentException("Super Admin cannot be created from this form.");
                 }
-                if (!"USER".equalsIgnoreCase(n) && !"ADMIN".equalsIgnoreCase(n)) {
+                if (!"USER".equalsIgnoreCase(n) && !UserRoleService.isStaffAdminRoleName(n)) {
                     throw new IllegalArgumentException("Only USER and ADMIN roles are allowed here.");
                 }
-                if ("ADMIN".equalsIgnoreCase(n)) {
+                if (UserRoleService.isStaffAdminRoleName(n)) {
                     hasAdmin = true;
                 }
                 roles.add(r);
@@ -101,8 +101,7 @@ public class UserService{
                     && "USER".equalsIgnoreCase(r.getRoleName()))) {
                 addDefaultUserRole(roles);
             }
-            hasAdmin = roles.stream().anyMatch(r -> r.getRoleName() != null
-                    && "ADMIN".equalsIgnoreCase(r.getRoleName()));
+            hasAdmin = roles.stream().anyMatch(r -> UserRoleService.isStaffAdminRoleName(r.getRoleName()));
         }
 
         String dash = req.getDashboardUsername() != null ? req.getDashboardUsername().trim() : "";

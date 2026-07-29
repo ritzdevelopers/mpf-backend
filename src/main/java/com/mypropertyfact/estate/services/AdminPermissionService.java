@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -65,6 +66,32 @@ public class AdminPermissionService {
         return perms.stream()
                 .filter(Objects::nonNull)
                 .anyMatch(p -> want.equalsIgnoreCase(p.trim()));
+    }
+
+    /**
+     * Permissions exposed to the admin UI (sidebar, route guards). Mirrors {@link #can(User, String)}
+     * so empty DB rows still grant legacy CMS access where configured.
+     */
+    public Set<String> effectivePermissions(User user) {
+        if (user == null || user.getId() == null) {
+            return Set.of();
+        }
+        if (userRoleService.userHasRole(user.getId(), "SUPERADMIN")) {
+            return AdminPermissionKeys.allKeys();
+        }
+        if (!userRoleService.userHasRole(user.getId(), "ADMIN")) {
+            return Set.of();
+        }
+        Set<String> perms = user.getAdminPermissions();
+        if (perms != null && !perms.isEmpty()) {
+            return normalizePermissions(perms);
+        }
+        if (!legacyFullAccessWhenEmpty) {
+            return Set.of();
+        }
+        Set<String> legacy = new LinkedHashSet<>(AdminPermissionKeys.allKeys());
+        legacy.remove(AdminPermissionKeys.MANAGE_ENQUIRIES);
+        return legacy;
     }
 
     public Set<String> normalizePermissions(Collection<String> raw) {

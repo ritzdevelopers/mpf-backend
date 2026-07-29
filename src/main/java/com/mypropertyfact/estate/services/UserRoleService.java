@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -20,6 +21,18 @@ public class UserRoleService {
     
     private final UserRepository userRepository;
     private final MasterRoleRepository masterRoleRepository;
+
+    /** Dashboard staff Admin role (not Super Admin). Supports legacy {@code ADMINUSER} name. */
+    public static boolean isStaffAdminRoleName(String roleName) {
+        if (roleName == null || roleName.isBlank()) {
+            return false;
+        }
+        String n = roleName.trim().toUpperCase(Locale.ROOT);
+        if (n.contains("SUPER")) {
+            return false;
+        }
+        return "ADMIN".equals(n) || "ADMINUSER".equals(n);
+    }
     
     /**
      * Assign multiple roles to a user
@@ -41,9 +54,8 @@ public class UserRoleService {
         }
         user.setRoles(roles);
         boolean hasAdmin = roles.stream()
-                .anyMatch(r -> r != null && r.getRoleName() != null
-                        && "ADMIN".equalsIgnoreCase(r.getRoleName())
-                        && Boolean.TRUE.equals(r.getIsActive()));
+                .anyMatch(r -> r != null && Boolean.TRUE.equals(r.getIsActive())
+                        && isStaffAdminRoleName(r.getRoleName()));
         if (!hasAdmin) {
             user.setAdminPermissions(new HashSet<>());
             user.setAdminStaffApproved(true);
@@ -66,9 +78,8 @@ public class UserRoleService {
             throw new IllegalArgumentException("This account is not waiting for approval.");
         }
         boolean hasAdmin = user.getRoles() != null && user.getRoles().stream()
-                .anyMatch(r -> r != null && r.getRoleName() != null
-                        && "ADMIN".equalsIgnoreCase(r.getRoleName())
-                        && Boolean.TRUE.equals(r.getIsActive()));
+                .anyMatch(r -> r != null && Boolean.TRUE.equals(r.getIsActive())
+                        && isStaffAdminRoleName(r.getRoleName()));
         if (hasAdmin) {
             if (user.getAdminPermissions() == null || user.getAdminPermissions().isEmpty()) {
                 user.setAdminPermissions(new HashSet<>(AdminPermissionKeys.allKeys()));
@@ -89,9 +100,8 @@ public class UserRoleService {
         }
 
         boolean hasAdmin = user.getRoles() != null && user.getRoles().stream()
-                .anyMatch(r -> r != null && r.getRoleName() != null
-                        && "ADMIN".equalsIgnoreCase(r.getRoleName())
-                        && Boolean.TRUE.equals(r.getIsActive()));
+                .anyMatch(r -> r != null && Boolean.TRUE.equals(r.getIsActive())
+                        && isStaffAdminRoleName(r.getRoleName()));
 
         if (hasAdmin) {
             MasterRole adminMaster = masterRoleRepository.findByRoleNameIgnoreCase("ADMIN")
@@ -205,6 +215,12 @@ public class UserRoleService {
         }
 
         if (user.getRoles() != null && !user.getRoles().isEmpty()) {
+            if ("ADMIN".equalsIgnoreCase(roleName)) {
+                return user.getRoles().stream()
+                        .anyMatch(role -> isStaffAdminRoleName(role.getRoleName())
+                                && role.getIsActive() != null
+                                && role.getIsActive());
+            }
             return user.getRoles().stream()
                     .anyMatch(role -> roleName.equalsIgnoreCase(role.getRoleName()) 
                             && role.getIsActive() != null 

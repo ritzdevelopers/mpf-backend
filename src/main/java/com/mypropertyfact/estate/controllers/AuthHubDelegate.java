@@ -868,9 +868,7 @@ public class AuthHubDelegate {
         body.put("fullName", user.getFullName());
         body.put("dashboardUsername", user.getDashboardUsername());
         body.put("permissions",
-                user.getAdminPermissions() != null
-                        ? new ArrayList<>(user.getAdminPermissions())
-                        : new ArrayList<String>());
+                new ArrayList<>(adminPermissionService.effectivePermissions(user)));
 
         return ResponseEntity.ok(body);
     }
