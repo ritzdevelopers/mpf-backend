@@ -40,4 +40,4 @@ jobs:
             cd ~/mpf-backend
             git pull origin main
             mvn clean package -DskipTests -B
-            sudo pm2 restart backend
+            pm2 restart backend
