@@ -24,6 +24,7 @@ public class AggregationFromController {
         return new ResponseEntity<>(aggregationFromService.getAllAggregationFrom(), HttpStatus.OK);
     }
     @PostMapping("/post")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<Response> addUpdateAggregationFrom(@RequestBody AggregationFrom aggregationFrom){
         return new ResponseEntity<>(aggregationFromService.addUpdateAggregationFrom(aggregationFrom), HttpStatus.OK);
     }

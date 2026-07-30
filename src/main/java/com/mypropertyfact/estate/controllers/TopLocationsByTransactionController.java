@@ -23,6 +23,7 @@ public class TopLocationsByTransactionController {
         return new ResponseEntity<>(topLocationsByTransactionService.getAllTopLocationsByTransaction(), HttpStatus.OK);
     }
     @PostMapping("/post")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_INSIGHTS')")
     public ResponseEntity<Response> addUpdateTopLocationsByTransaction(@RequestBody TopLocationsByTransaction topLocationsByTransaction){
         return new ResponseEntity<>(topLocationsByTransactionService.addUpdateTopLocationsByTransaction(topLocationsByTransaction), HttpStatus.OK);
     }

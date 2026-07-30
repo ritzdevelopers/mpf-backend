@@ -25,6 +25,7 @@ public class ProjectAmenityController {
         return new ResponseEntity<>(this.projectAmenityService.getAllProjectAmenity(), HttpStatus.OK);
     }
     @PostMapping("/add-update")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
     public ResponseEntity<Response> postAmenity(@RequestBody ProjectAmenityDto projectAmenityDto){
         return new ResponseEntity<>(this.projectAmenityService.addProjectAmenity(projectAmenityDto), HttpStatus.OK);
     }

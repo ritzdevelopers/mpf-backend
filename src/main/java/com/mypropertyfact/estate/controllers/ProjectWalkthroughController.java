@@ -32,6 +32,7 @@ public class ProjectWalkthroughController {
         return new ResponseEntity<>(walkthrough, HttpStatus.OK);
     }
     @PostMapping("/add-update")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
     public ResponseEntity<Response> addUpdate(@RequestBody ProjectWalkthroughDto projectWalkthroughDto){
         return new ResponseEntity<>(this.projectWalkthroughService.addUpdate(projectWalkthroughDto), HttpStatus.OK);
     }

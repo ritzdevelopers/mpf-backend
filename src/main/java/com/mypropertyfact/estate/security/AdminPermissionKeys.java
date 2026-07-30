@@ -56,6 +56,17 @@ public final class AdminPermissionKeys {
     }
 
     /**
+     * Default CMS permissions for staff Admin (all modules except enquiries).
+     * Enquiries must be granted explicitly with a PIN.
+     */
+    public static Set<String> defaultStaffAdminKeys() {
+        return DEFINITION_ROWS.stream()
+                .map(r -> r.get("key"))
+                .filter(k -> !MANAGE_ENQUIRIES.equals(k))
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    /**
      * Returns the canonical uppercase key from {@link #allKeys()}, or null if unknown.
      */
     public static String canonicalizePermissionKey(String raw) {

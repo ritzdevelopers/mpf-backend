@@ -25,6 +25,7 @@ public class ProjectGalleryController {
         return new ResponseEntity<>(this.projectGalleryService.getAllGalleryImages(), HttpStatus.OK);
     }
     @PostMapping("/add-new")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
     public ResponseEntity<Response> postGalleryImage(@ModelAttribute ProjectGalleryDto projectGalleryDto){
         return new ResponseEntity<>(this.projectGalleryService.postGalleryImage(projectGalleryDto), HttpStatus.OK);
     }

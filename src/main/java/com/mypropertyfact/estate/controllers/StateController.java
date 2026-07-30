@@ -21,6 +21,7 @@ public class StateController {
     }
 
     @PostMapping("/add-update")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<Response> addUpdate(@RequestBody StateDto stateDto){
         return ResponseEntity.ok(stateService.addUpdate(stateDto));
     }

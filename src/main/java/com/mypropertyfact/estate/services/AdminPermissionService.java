@@ -89,8 +89,7 @@ public class AdminPermissionService {
         if (!legacyFullAccessWhenEmpty) {
             return Set.of();
         }
-        Set<String> legacy = new LinkedHashSet<>(AdminPermissionKeys.allKeys());
-        legacy.remove(AdminPermissionKeys.MANAGE_ENQUIRIES);
+        Set<String> legacy = new LinkedHashSet<>(AdminPermissionKeys.defaultStaffAdminKeys());
         return legacy;
     }
 

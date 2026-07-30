@@ -29,6 +29,7 @@ public class ProjectTypesController {
         return new ResponseEntity<>(this.projectTypesService.getAllProjectTypesList(), HttpStatus.OK);
     }
     @PostMapping("/add-update")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
     public ResponseEntity<Response> addUpdateProjectType(@RequestBody ProjectTypes projectTypes){
         return new ResponseEntity<>(this.projectTypesService.addUpdateProjectType(projectTypes), HttpStatus.OK);
     }

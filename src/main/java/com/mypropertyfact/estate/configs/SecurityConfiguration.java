@@ -68,7 +68,8 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/v1/admin/**").hasAnyRole("SUPERADMIN", "ADMIN")
                         .requestMatchers("/api/v1/user/**").authenticated()
-                        .requestMatchers("/api/v1/users/me").authenticated()
+                        // Self profile endpoints must be authenticated for any role (before /users/**).
+                        .requestMatchers("/api/v1/users/me", "/api/v1/users/me/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("SUPERADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/users").hasRole("SUPERADMIN")
                         .requestMatchers("/api/v1/users/**").hasRole("SUPERADMIN")

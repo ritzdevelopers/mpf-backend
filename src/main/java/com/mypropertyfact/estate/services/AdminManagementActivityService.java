@@ -77,6 +77,13 @@ public class AdminManagementActivityService {
         return AdminManagementActivityItemDto.builder()
                 .occurredAt(row.getOccurredAt())
                 .event(event)
+                .actorName(displayName)
+                .actorEmail(email.isEmpty() ? null : email)
+                .actorUserId(row.getActorUserId())
+                .action(task)
+                .httpMethod(row.getHttpMethod())
+                .success(row.isSuccess())
+                .requestPath(row.getRequestPath())
                 .build();
     }
 

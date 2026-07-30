@@ -33,7 +33,7 @@ public class EnquiryController {
     private String crmExportKey;
 
     @GetMapping("/get-all")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_ENQUIRIES')")
     public ResponseEntity<List<Enquery>> getAll(HttpServletRequest request) {
         User user = requireUser();
         assertEnquiryAccess(user, request);
@@ -62,7 +62,7 @@ public class EnquiryController {
     }
 
     @DeleteMapping("/delete/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_ENQUIRIES')")
     public ResponseEntity<Response> deleteEnquiry(@PathVariable int id, HttpServletRequest request) {
         User user = requireUser();
         assertEnquiryAccess(user, request);
@@ -70,7 +70,7 @@ public class EnquiryController {
     }
 
     @PutMapping("/update-status/{enquiryId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_ENQUIRIES')")
     public ResponseEntity<SuccessResponse> updateStatus(
             @PathVariable("enquiryId") int enquiryId,
             @RequestBody Map<String, String> requestBody,
@@ -81,7 +81,7 @@ public class EnquiryController {
     }
 
     @GetMapping("/by-property/{propertyId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_ENQUIRIES')")
     public ResponseEntity<List<Enquery>> getByPropertyId(
             @PathVariable Long propertyId, HttpServletRequest request) {
         User user = requireUser();

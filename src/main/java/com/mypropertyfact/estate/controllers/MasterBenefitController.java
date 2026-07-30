@@ -30,6 +30,7 @@ public class MasterBenefitController {
     }
 
     @PostMapping("/upload")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_NEARBY_BENEFITS')")
     public ResponseEntity<SuccessResponse> uploadLocationBenefits(@RequestParam("files") List<MultipartFile> files) {
         return ResponseEntity.ok(masterBenefitService.postBulkBenefits(files));
     }

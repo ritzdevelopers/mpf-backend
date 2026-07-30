@@ -55,6 +55,7 @@ public class UserController {
     }
 
     @PutMapping("/me")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<User> updateProfile(@RequestBody User updatedUser) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         log.info("Updating user profile");
@@ -103,6 +104,7 @@ public class UserController {
     }
 
     @PutMapping("/me/persona")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> setPortalPersona(@RequestBody Map<String, String> body) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
@@ -130,6 +132,7 @@ public class UserController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<List<User>> allUsers() {
         List <User> users = userService.allUsers();
         return ResponseEntity.ok(users);
@@ -216,6 +219,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<User> getUserById(@PathVariable Integer id) {
         return userService.findById(id)
                 .map(ResponseEntity::ok)
@@ -223,6 +227,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<?> updateUser(@PathVariable Integer id, @RequestBody User updatedUser) {
         try {
             User user = userService.updateUser(id, updatedUser);
@@ -238,6 +243,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/activate")
+    @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<User> activateUser(@PathVariable Integer id) {
         try {
             User user = userService.activateUser(id);
@@ -250,6 +256,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/deactivate")
+    @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<User> deactivateUser(@PathVariable Integer id) {
         try {
             User user = userService.deactivateUser(id);
@@ -262,6 +269,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/roles")
+    @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<User> updateUserRoles(@PathVariable Integer id, @RequestBody List<Integer> roleIds) {
         try {
             User user = userRoleService.assignRolesToUser(id, roleIds);
@@ -274,6 +282,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/password")
+    @PreAuthorize("hasRole('SUPERADMIN')")
     public ResponseEntity<?> setUserPassword(
             @PathVariable Integer id,
             @Valid @RequestBody AdminSetPasswordRequest request) {

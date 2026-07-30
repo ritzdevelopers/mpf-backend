@@ -178,8 +178,14 @@ public class UserService{
     }
 
     public User updateUser(Integer id, User updatedUser) {
+        if (!currentActorIsSuperAdmin()) {
+            throw new IllegalArgumentException("Only Super Admin can update users.");
+        }
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+
+        boolean targetIsSuperAdmin = userRoleService.userHasRole(id, "SUPERADMIN");
         
         if (updatedUser.getFullName() != null) {
             user.setFullName(updatedUser.getFullName());
@@ -209,6 +215,12 @@ public class UserService{
             user.setVerified(updatedUser.getVerified());
         }
         if (updatedUser.getEnabled() != null) {
+            if (targetIsSuperAdmin && Boolean.FALSE.equals(updatedUser.getEnabled())) {
+                long superCount = userRepository.countDistinctUsersHavingActiveRole("SUPERADMIN");
+                if (superCount <= 1) {
+                    throw new IllegalArgumentException("Cannot deactivate the last Super Administrator account.");
+                }
+            }
             user.setEnabled(updatedUser.getEnabled());
         }
         if (updatedUser.getDashboardUsername() != null) {
@@ -216,12 +228,14 @@ public class UserService{
             user.setDashboardUsername(u.isEmpty() ? null : u);
         }
         if (updatedUser.getUserCategory() != null) {
-            if (!currentActorIsSuperAdmin()) {
-                throw new IllegalArgumentException("Only Super Admin can change user category.");
-            }
             user.setUserCategory(normalizeUserCategory(updatedUser.getUserCategory()));
         }
+        // Super Admin accounts do not use granular module permissions — ignore attempts to set them.
         if (updatedUser.getAdminPermissions() != null) {
+            if (targetIsSuperAdmin) {
+                throw new IllegalArgumentException(
+                        "Super Admin permissions cannot be modified. Super Admin always has full access.");
+            }
             if (userRoleService.userHasRole(id, "ADMIN")) {
                 user.setAdminPermissions(
                         adminPermissionService.normalizePermissions(updatedUser.getAdminPermissions()));
@@ -279,6 +293,12 @@ public class UserService{
     }
 
     public User deactivateUser(Integer id) {
+        if (userRoleService.userHasRole(id, "SUPERADMIN")) {
+            long superCount = userRepository.countDistinctUsersHavingActiveRole("SUPERADMIN");
+            if (superCount <= 1) {
+                throw new IllegalArgumentException("Cannot deactivate the last Super Administrator account.");
+            }
+        }
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         user.setEnabled(false);

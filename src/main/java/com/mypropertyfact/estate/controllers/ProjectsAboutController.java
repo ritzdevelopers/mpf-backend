@@ -24,6 +24,7 @@ public class ProjectsAboutController {
         return new ResponseEntity<>(this.projectAboutService.getAllProjectsAbout(), HttpStatus.OK);
     }
     @PostMapping("/add-update")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")
     public ResponseEntity<Response> addUpdate(@RequestBody ProjectAboutDto projectAboutDto){
         return new ResponseEntity<>(this.projectAboutService.addUpdate(projectAboutDto), HttpStatus.OK);
     }

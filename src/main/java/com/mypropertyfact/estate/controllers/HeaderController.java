@@ -23,6 +23,7 @@ public class HeaderController {
         return new ResponseEntity<>(headerService.getAllHeaders(), HttpStatus.OK);
     }
     @PostMapping("/post")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_INSIGHTS')")
     public ResponseEntity<Response> addUpdateHeader(@RequestBody Headers headers){
         return new ResponseEntity<>(headerService.addUpdateHeader(headers), HttpStatus.OK);
     }

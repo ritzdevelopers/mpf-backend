@@ -44,6 +44,11 @@ public class UserRoleService {
     public User assignRolesToUser(Integer userId, List<Integer> roleIds) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (userHasRole(userId, "SUPERADMIN")) {
+            throw new IllegalArgumentException(
+                    "Super Admin accounts cannot have their roles changed from Manage Users.");
+        }
         
         Set<MasterRole> roles = new HashSet<>();
         if (roleIds != null && !roleIds.isEmpty()) {
@@ -51,6 +56,11 @@ public class UserRoleService {
                 masterRoleRepository.findById(roleId)
                         .ifPresent(roles::add);
             }
+        }
+        boolean assigningSuper = roles.stream()
+                .anyMatch(r -> r != null && "SUPERADMIN".equalsIgnoreCase(r.getRoleName()));
+        if (assigningSuper) {
+            throw new IllegalArgumentException("Super Admin role cannot be assigned from Manage Users.");
         }
         user.setRoles(roles);
         boolean hasAdmin = roles.stream()
@@ -61,7 +71,8 @@ public class UserRoleService {
             user.setAdminStaffApproved(true);
         } else {
             if (user.getAdminPermissions() == null || user.getAdminPermissions().isEmpty()) {
-                user.setAdminPermissions(new HashSet<>(AdminPermissionKeys.allKeys()));
+                // Match create-user + legacy empty-set semantics: all CMS except enquiries.
+                user.setAdminPermissions(new HashSet<>(AdminPermissionKeys.defaultStaffAdminKeys()));
             }
             if (!Boolean.FALSE.equals(user.getAdminStaffApproved())) {
                 user.setAdminStaffApproved(true);
@@ -82,7 +93,7 @@ public class UserRoleService {
                         && isStaffAdminRoleName(r.getRoleName()));
         if (hasAdmin) {
             if (user.getAdminPermissions() == null || user.getAdminPermissions().isEmpty()) {
-                user.setAdminPermissions(new HashSet<>(AdminPermissionKeys.allKeys()));
+                user.setAdminPermissions(new HashSet<>(AdminPermissionKeys.defaultStaffAdminKeys()));
             }
         }
         user.setAdminStaffApproved(true);
