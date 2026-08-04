@@ -26,26 +26,30 @@ public final class AdminPermissionKeys {
     public static final String MANAGE_NEARBY_BENEFITS = "MANAGE_NEARBY_BENEFITS";
     public static final String MANAGE_PROPERTY_APPROVALS = "MANAGE_PROPERTY_APPROVALS";
     public static final String MANAGE_ENQUIRIES = "MANAGE_ENQUIRIES";
+    /** Pro: bulk-add FAQs across multiple listing pages in one request. */
+    public static final String BULK_LISTING_FAQS = "BULK_LISTING_FAQS";
 
     private static final List<Map<String, String>> DEFINITION_ROWS = List.of(
-            entry(MANAGE_WEBSITE, "Manage website", "Home banners and similar site content"),
-            entry(MANAGE_LISTING_FAQS, "Manage listing page FAQs", "FAQs for listing pages (city hubs, BHK, shops, food court, etc.)"),
-            entry(MANAGE_OPTIONS, "Manage options", "Countries, states, cities, builders, project types, careers, etc."),
-            entry(MANAGE_PROJECTS, "Manage projects", "Projects, banners, galleries, FAQs, amenities, floor plans, Excel bulk upload"),
-            entry(MANAGE_INSIGHTS, "Insight management", "City price data, locality scores, headers, insight categories, top developers"),
-            entry(MANAGE_BLOGS, "Blog management", "Blogs and blog categories"),
-            entry(MANAGE_WEB_STORIES, "Web story management", "Web stories and categories"),
-            entry(MANAGE_AMENITIES, "Amenities", "Master amenities list"),
-            entry(MANAGE_FEATURES, "Features", "Property features"),
-            entry(MANAGE_NEARBY_BENEFITS, "Nearby benefits", "Location / nearby benefit content"),
-            entry(MANAGE_PROPERTY_APPROVALS, "Property approvals", "Review and approve user-submitted property listings"),
-            entry(MANAGE_ENQUIRIES, "Manage enquiries", "View leads and enquiries after entering the 4-digit code set by Super Admin"));
+            entry(MANAGE_WEBSITE, "Manage website", "Home banners and similar site content", false),
+            entry(MANAGE_LISTING_FAQS, "Manage listing page FAQs", "FAQs for listing pages (city hubs, BHK, shops, food court, etc.)", false),
+            entry(MANAGE_OPTIONS, "Manage options", "Countries, states, cities, builders, project types, careers, etc.", false),
+            entry(MANAGE_PROJECTS, "Manage projects", "Projects, banners, galleries, FAQs, amenities, floor plans, Excel bulk upload", false),
+            entry(MANAGE_INSIGHTS, "Insight management", "City price data, locality scores, headers, insight categories, top developers", false),
+            entry(MANAGE_BLOGS, "Blog management", "Blogs and blog categories", false),
+            entry(MANAGE_WEB_STORIES, "Web story management", "Web stories and categories", false),
+            entry(MANAGE_AMENITIES, "Amenities", "Master amenities list", false),
+            entry(MANAGE_FEATURES, "Features", "Property features", false),
+            entry(MANAGE_NEARBY_BENEFITS, "Nearby benefits", "Location / nearby benefit content", false),
+            entry(MANAGE_PROPERTY_APPROVALS, "Property approvals", "Review and approve user-submitted property listings", false),
+            entry(MANAGE_ENQUIRIES, "Manage enquiries", "View leads and enquiries after entering the 4-digit code set by Super Admin", false),
+            entry(BULK_LISTING_FAQS, "Bulk FAQ add", "Add multiple FAQs for various listing pages in one go", true));
 
-    private static Map<String, String> entry(String key, String label, String description) {
+    private static Map<String, String> entry(String key, String label, String description, boolean pro) {
         Map<String, String> m = new LinkedHashMap<>();
         m.put("key", key);
         m.put("label", label);
         m.put("description", description);
+        m.put("pro", pro ? "true" : "false");
         return m;
     }
 
@@ -58,13 +62,20 @@ public final class AdminPermissionKeys {
     }
 
     /**
-     * Default CMS permissions for staff Admin (all modules except enquiries).
-     * Enquiries must be granted explicitly with a PIN.
+     * Permissions that must be granted explicitly (never in default / legacy full CMS access).
+     */
+    public static boolean isExplicitGrantOnly(String key) {
+        return MANAGE_ENQUIRIES.equals(key) || BULK_LISTING_FAQS.equals(key);
+    }
+
+    /**
+     * Default CMS permissions for staff Admin (all modules except explicit-grant / pro features).
+     * Enquiries and pro features must be granted explicitly by Super Admin.
      */
     public static Set<String> defaultStaffAdminKeys() {
         return DEFINITION_ROWS.stream()
                 .map(r -> r.get("key"))
-                .filter(k -> !MANAGE_ENQUIRIES.equals(k))
+                .filter(k -> !isExplicitGrantOnly(k))
                 .collect(Collectors.toUnmodifiableSet());
     }
 

@@ -1,5 +1,6 @@
 package com.mypropertyfact.estate.controllers;
 
+import com.mypropertyfact.estate.dtos.ListingPageFaqBulkDto;
 import com.mypropertyfact.estate.dtos.ListingPageFaqDto;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.ListingPageFaqService;
@@ -33,6 +34,12 @@ public class ListingPageFaqController {
     @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_LISTING_FAQS')")
     public ResponseEntity<Response> addUpdateFaq(@RequestBody ListingPageFaqDto dto) {
         return new ResponseEntity<>(listingPageFaqService.addUpdateFaq(dto), HttpStatus.OK);
+    }
+
+    @PostMapping("/bulk-add")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'BULK_LISTING_FAQS')")
+    public ResponseEntity<Response> bulkAddFaqs(@RequestBody ListingPageFaqBulkDto bulkDto) {
+        return new ResponseEntity<>(listingPageFaqService.bulkAddFaqs(bulkDto), HttpStatus.OK);
     }
 
     @DeleteMapping("/delete/{id}")
