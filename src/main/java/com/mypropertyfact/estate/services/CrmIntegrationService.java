@@ -1,5 +1,7 @@
 package com.mypropertyfact.estate.services;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mypropertyfact.estate.entities.Enquery;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -22,6 +24,7 @@ public class CrmIntegrationService {
     private String webhookKey;
 
     private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public void pushEnquiry(Enquery enquiry) {
         if (!StringUtils.hasText(webhookUrl) || !StringUtils.hasText(webhookKey) || enquiry == null) {
@@ -43,8 +46,22 @@ public class CrmIntegrationService {
             body.put("pageName", enquiry.getPageName());
             body.put("projectLink", enquiry.getProjectLink());
             body.put("status", enquiry.getStatus());
+            if (enquiry.getWhatsapp() != null) {
+                body.put("whatsapp", enquiry.getWhatsapp());
+            }
             if (enquiry.getCreatedAt() != null) {
                 body.put("createdAt", enquiry.getCreatedAt().toString());
+            }
+            if (StringUtils.hasText(enquiry.getMetadataJson())) {
+                try {
+                    Map<String, Object> metadata = objectMapper.readValue(
+                            enquiry.getMetadataJson(),
+                            new TypeReference<Map<String, Object>>() {}
+                    );
+                    body.put("metadata", metadata);
+                } catch (Exception ignored) {
+                    body.put("metadataJson", enquiry.getMetadataJson());
+                }
             }
 
             restTemplate.postForObject(webhookUrl, new HttpEntity<>(body, headers), String.class);

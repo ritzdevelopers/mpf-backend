@@ -62,6 +62,12 @@ public class EnquiryService {
                     dbEnquery.setEnquiryFrom(source);
                     dbEnquery.setProjectLink(enquery.getProjectLink());
                     dbEnquery.setPropertyId(enquery.getPropertyId());
+                    if (enquery.getMetadataJson() != null) {
+                        dbEnquery.setMetadataJson(enquery.getMetadataJson());
+                    }
+                    if (enquery.getWhatsapp() != null) {
+                        dbEnquery.setWhatsapp(enquery.getWhatsapp());
+                    }
                     Enquery saved = enqueryRepository.save(dbEnquery);
                     response.setIsSuccess(1);
                     leadService.createLead(

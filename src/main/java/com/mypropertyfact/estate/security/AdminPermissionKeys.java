@@ -15,6 +15,7 @@ public final class AdminPermissionKeys {
     private AdminPermissionKeys() {}
 
     public static final String MANAGE_WEBSITE = "MANAGE_WEBSITE";
+    public static final String MANAGE_LISTING_FAQS = "MANAGE_LISTING_FAQS";
     public static final String MANAGE_OPTIONS = "MANAGE_OPTIONS";
     public static final String MANAGE_PROJECTS = "MANAGE_PROJECTS";
     public static final String MANAGE_INSIGHTS = "MANAGE_INSIGHTS";
@@ -28,6 +29,7 @@ public final class AdminPermissionKeys {
 
     private static final List<Map<String, String>> DEFINITION_ROWS = List.of(
             entry(MANAGE_WEBSITE, "Manage website", "Home banners and similar site content"),
+            entry(MANAGE_LISTING_FAQS, "Manage listing page FAQs", "FAQs for listing pages (city hubs, BHK, shops, food court, etc.)"),
             entry(MANAGE_OPTIONS, "Manage options", "Countries, states, cities, builders, project types, careers, etc."),
             entry(MANAGE_PROJECTS, "Manage projects", "Projects, banners, galleries, FAQs, amenities, floor plans, Excel bulk upload"),
             entry(MANAGE_INSIGHTS, "Insight management", "City price data, locality scores, headers, insight categories, top developers"),

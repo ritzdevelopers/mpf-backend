@@ -30,13 +30,13 @@ public class ListingPageFaqController {
     }
 
     @PostMapping("/add-update")
-    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_WEBSITE')")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_LISTING_FAQS')")
     public ResponseEntity<Response> addUpdateFaq(@RequestBody ListingPageFaqDto dto) {
         return new ResponseEntity<>(listingPageFaqService.addUpdateFaq(dto), HttpStatus.OK);
     }
 
     @DeleteMapping("/delete/{id}")
-    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_WEBSITE')")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_LISTING_FAQS')")
     public ResponseEntity<Response> deleteFaq(@PathVariable("id") int id) {
         return new ResponseEntity<>(listingPageFaqService.deleteFaq(id), HttpStatus.OK);
     }

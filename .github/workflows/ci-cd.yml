@@ -36,8 +36,11 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 2222
           command_timeout: 30m
+          script_stop: true
           script: |
+            set -e
             cd ~/mpf-backend
+            sudo chown -R "$(whoami):$(whoami)" .
             git pull origin main
             mvn clean package -DskipTests -B
             pm2 restart backend
