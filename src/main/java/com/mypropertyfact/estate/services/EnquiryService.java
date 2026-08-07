@@ -10,13 +10,16 @@ import com.mypropertyfact.estate.repositories.PropertyListingRepository;
 import com.mypropertyfact.estate.repositories.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EnquiryService {
@@ -32,6 +35,7 @@ public class EnquiryService {
     private final CrmIntegrationService crmIntegrationService;
     private static final String SOURCE_WEBSITE = "WEBSITE";
     private static final String SOURCE_APP = "APP";
+    private static final String SUCCESS_MESSAGE = "Enquiry sent successfully";
 
     public List<Enquery> getAll() {
         return enqueryRepository.findAll();
@@ -69,18 +73,9 @@ public class EnquiryService {
                         dbEnquery.setWhatsapp(enquery.getWhatsapp());
                     }
                     Enquery saved = enqueryRepository.save(dbEnquery);
+                    notifyEnquiryIntegrationsAsync(saved, source);
                     response.setIsSuccess(1);
-                    leadService.createLead(
-                            saved.getName(),
-                            saved.getPhone(),
-                            saved.getEmail(),
-                            saved.getPageName(),
-                            "lead",
-                            source,
-                            saved.getProjectLink()
-                    );
-                    crmIntegrationService.pushEnquiry(saved);
-                    response.setMessage("Data updated successfully...");
+                    response.setMessage(SUCCESS_MESSAGE);
                 } else {
                     response.setMessage("No data found !!");
                 }
@@ -88,31 +83,41 @@ public class EnquiryService {
                 Enquery saved = enqueryRepository.save(enquery);
 //                sendEmailHandler.sendEmail(saved.getEmail(), "Thank you for giving details",
 //                        "Hi, Thank you out team will get back to you");
-                try {
-                    leadService.createLead(
-                            saved.getName(),
-                            saved.getPhone(),
-                            saved.getEmail(),
-                            saved.getPageName(),
-                            "lead",
-                            source,
-                            saved.getProjectLink()
-                    );
-                } catch (Exception ignored) {
-                    // Keep existing enquiry flow unchanged if Telegram fails.
-                }
-                try {
-                    crmIntegrationService.pushEnquiry(saved);
-                } catch (Exception ignored) {
-                    // Keep existing enquiry flow unchanged if CRM push fails.
-                }
+                // Telegram + CRM run in background so the form can return immediately after DB save.
+                notifyEnquiryIntegrationsAsync(saved, source);
                 response.setIsSuccess(1);
-                response.setMessage("Data saved successfully...");
+                response.setMessage(SUCCESS_MESSAGE);
             }
         } catch (Exception e) {
             response.setMessage(e.getMessage());
         }
         return response;
+    }
+
+    /**
+     * Push Telegram / CRM after the HTTP response. Failures must not block enquiry submit.
+     */
+    private void notifyEnquiryIntegrationsAsync(Enquery saved, String source) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                leadService.createLead(
+                        saved.getName(),
+                        saved.getPhone(),
+                        saved.getEmail(),
+                        saved.getPageName(),
+                        "lead",
+                        source,
+                        saved.getProjectLink()
+                );
+            } catch (Exception e) {
+                log.warn("Telegram lead notify failed for enquiry {}: {}", saved.getId(), e.getMessage());
+            }
+            try {
+                crmIntegrationService.pushEnquiry(saved);
+            } catch (Exception e) {
+                log.warn("CRM push failed for enquiry {}: {}", saved.getId(), e.getMessage());
+            }
+        });
     }
 
     private String normalizeLeadSource(String raw) {
