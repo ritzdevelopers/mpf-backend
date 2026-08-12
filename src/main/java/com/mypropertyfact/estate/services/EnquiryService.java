@@ -8,6 +8,7 @@ import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.repositories.EnqueryRepository;
 import com.mypropertyfact.estate.repositories.PropertyListingRepository;
 import com.mypropertyfact.estate.repositories.UserRepository;
+import com.mypropertyfact.estate.validation.LeadSpamValidator;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +53,17 @@ public class EnquiryService {
     public Response addUpdate(Enquery enquery, String forcedSource) {
         Response response = new Response();
         try {
+            String rejectReason = LeadSpamValidator.rejectReason(
+                    enquery.getName(),
+                    enquery.getEmail(),
+                    enquery.getPhone()
+            );
+            if (rejectReason != null) {
+                response.setIsSuccess(0);
+                response.setMessage(rejectReason);
+                return response;
+            }
+
             String source = normalizeLeadSource(forcedSource != null ? forcedSource : enquery.getEnquiryFrom());
             enquery.setEnquiryFrom(source);
             if (enquery.getId() > 0) {
