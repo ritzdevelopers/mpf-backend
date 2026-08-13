@@ -42,7 +42,7 @@ public class IpTrackService {
 
     private static final long NORMAL_PATH_THROTTLE_MS = 60_000L;
     private static final Pattern SCAN_PATH = Pattern.compile(
-            "(?i)(\\.env|\\.git|/\\.aws|wp-admin|wp-login|phpmyadmin|xmlrpc|cgi-bin|"
+            "(?i)(\\.env|\\.git|\\.aws|wp-admin|wp-login|phpmyadmin|xmlrpc|cgi-bin|"
                     + "actuator|/vendor/phpunit|/\\.svn|/\\.hg|\\.bak$|\\.sql($|\\?)|"
                     + "credentials|id_rsa|docker-compose|/adminer|/telescope|/debug|"
                     + "server-status|\\.DS_Store|web\\.config|phpinfo)",
@@ -202,13 +202,29 @@ public class IpTrackService {
             Double lon = toDouble(r.length > 9 ? r[9] : null);
             String org = toStr(r.length > 10 ? r[10] : null);
 
-            List<String> recentPaths = new ArrayList<>();
+            // Prefer scan/probe paths (.env, .git, .aws, …) so they surface in admin UI.
+            List<String> scanPaths = new ArrayList<>();
+            List<String> visitPaths = new ArrayList<>();
             for (IpTrackEvent ev : ipTrackEventRepository.findTop20ByRemoteAddrOrderByOccurredAtDesc(ip)) {
-                if (ev.getPath() != null && recentPaths.size() < 8) {
-                    String label = ev.isScan() ? "SCAN " + ev.getPath() : ev.getPath();
-                    if (!recentPaths.contains(label)) {
-                        recentPaths.add(label);
+                if (ev.getPath() == null) {
+                    continue;
+                }
+                String label = ev.isScan() ? "SCAN " + ev.getPath() : ev.getPath();
+                if (ev.isScan()) {
+                    if (!scanPaths.contains(label) && scanPaths.size() < 8) {
+                        scanPaths.add(label);
                     }
+                } else if (!visitPaths.contains(label) && visitPaths.size() < 8) {
+                    visitPaths.add(label);
+                }
+            }
+            List<String> recentPaths = new ArrayList<>(scanPaths);
+            for (String v : visitPaths) {
+                if (recentPaths.size() >= 8) {
+                    break;
+                }
+                if (!recentPaths.contains(v)) {
+                    recentPaths.add(v);
                 }
             }
 
