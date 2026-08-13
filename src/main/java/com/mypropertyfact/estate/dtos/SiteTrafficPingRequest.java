@@ -14,4 +14,8 @@ public class SiteTrafficPingRequest {
      * When set, this row represents a completed page visit (not a simple ping).
      */
     private Long dwellMs;
+
+    /** Optional device GPS (when the visitor has allowed location). */
+    private Double latitude;
+    private Double longitude;
 }

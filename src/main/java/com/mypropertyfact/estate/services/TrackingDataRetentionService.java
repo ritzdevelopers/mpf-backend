@@ -1,6 +1,7 @@
 package com.mypropertyfact.estate.services;
 
 import com.mypropertyfact.estate.repositories.AdminAuditLogRepository;
+import com.mypropertyfact.estate.repositories.IpTrackEventRepository;
 import com.mypropertyfact.estate.repositories.SearchQueryEventRepository;
 import com.mypropertyfact.estate.repositories.SiteTrafficEventRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class TrackingDataRetentionService {
     private final SiteTrafficEventRepository siteTrafficEventRepository;
     private final AdminAuditLogRepository adminAuditLogRepository;
     private final SearchQueryEventRepository searchQueryEventRepository;
+    private final IpTrackEventRepository ipTrackEventRepository;
 
     @Value("${mpf.tracking.retention-days:30}")
     private int retentionDays;
@@ -32,12 +34,14 @@ public class TrackingDataRetentionService {
         int t = siteTrafficEventRepository.deleteByOccurredAtBefore(cutoff);
         int a = adminAuditLogRepository.deleteByOccurredAtBefore(cutoff);
         int s = searchQueryEventRepository.deleteByOccurredAtBefore(cutoff);
-        if (t > 0 || a > 0 || s > 0) {
+        int i = ipTrackEventRepository.deleteByOccurredAtBefore(cutoff);
+        if (t > 0 || a > 0 || s > 0 || i > 0) {
             log.info(
-                    "Tracking retention purge: site_traffic_event={}, admin_audit_log={}, search_query_event={}, cutoff={}",
+                    "Tracking retention purge: site_traffic_event={}, admin_audit_log={}, search_query_event={}, ip_track_event={}, cutoff={}",
                     t,
                     a,
                     s,
+                    i,
                     cutoff);
         }
     }

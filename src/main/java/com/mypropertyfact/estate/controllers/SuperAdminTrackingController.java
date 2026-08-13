@@ -2,11 +2,15 @@ package com.mypropertyfact.estate.controllers;
 
 import com.mypropertyfact.estate.dtos.AdminAuditLogEntryDto;
 import com.mypropertyfact.estate.dtos.AdminAuditLogPageResponse;
+import com.mypropertyfact.estate.dtos.IpTrackEventPageResponse;
+import com.mypropertyfact.estate.dtos.IpTrackIpPageResponse;
+import com.mypropertyfact.estate.dtos.IpTrackSummaryResponse;
 import com.mypropertyfact.estate.dtos.SiteTrafficSummaryResponse;
 import com.mypropertyfact.estate.dtos.SiteTrafficVisitPageResponse;
 import com.mypropertyfact.estate.dtos.SuperAdminNotificationsResponse;
 import com.mypropertyfact.estate.dtos.TrafficRevealRequest;
 import com.mypropertyfact.estate.services.AdminAuditLogService;
+import com.mypropertyfact.estate.services.IpTrackService;
 import com.mypropertyfact.estate.services.SiteTrafficService;
 import com.mypropertyfact.estate.services.SuperAdminNotificationService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,6 +45,7 @@ import java.util.Map;
 public class SuperAdminTrackingController {
 
     private final SiteTrafficService siteTrafficService;
+    private final IpTrackService ipTrackService;
     private final AdminAuditLogService adminAuditLogService;
     private final SuperAdminNotificationService superAdminNotificationService;
 
@@ -108,6 +113,32 @@ public class SuperAdminTrackingController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
                 .body(csv);
+    }
+
+    @GetMapping("/ip-track/summary")
+    public ResponseEntity<IpTrackSummaryResponse> ipTrackSummary() {
+        return ResponseEntity.ok(ipTrackService.buildSummary());
+    }
+
+    @GetMapping("/ip-track/ips")
+    public ResponseEntity<IpTrackIpPageResponse> ipTrackIps(
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(defaultValue = "false") boolean scansOnly,
+            @RequestParam(required = false) Integer hours) {
+        return ResponseEntity.ok(
+                ipTrackService.listIpSummaries(request, page, size, scansOnly, hours));
+    }
+
+    @GetMapping("/ip-track/events")
+    public ResponseEntity<IpTrackEventPageResponse> ipTrackEvents(
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(defaultValue = "false") boolean scansOnly,
+            @RequestParam(required = false) String ip) {
+        return ResponseEntity.ok(ipTrackService.listEvents(request, ip, scansOnly, page, size));
     }
 
     @GetMapping("/audit-logs")
