@@ -15,6 +15,7 @@ public class Enquery {
     private String name;
     private String email;
     private String phone;
+    @Column(columnDefinition = "TEXT")
     private String message;
     private String enquiryFrom;
     private String projectLink;

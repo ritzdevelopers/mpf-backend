@@ -13,13 +13,17 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -75,14 +79,35 @@ public class AdminAuditLogService {
             Boolean success,
             String pathContains,
             Pageable pageable) {
-        LocalDateTime from = parseIsoLocal(fromIso);
-        LocalDateTime to = parseIsoLocal(toIso);
+        return search(fromIso, toIso, email, success, pathContains, null, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AdminAuditLogEntryDto> search(
+            String fromIso,
+            String toIso,
+            String email,
+            Boolean success,
+            String pathContains,
+            String q,
+            String kind,
+            Pageable pageable) {
+        LocalDateTime from = parseBound(fromIso, false);
+        LocalDateTime to = parseBound(toIso, true);
+        List<Integer> nameIds = Collections.emptyList();
+        if (q != null && !q.isBlank()) {
+            nameIds = userRepository.findByFullNameContainingIgnoreCase(q.trim()).stream()
+                    .map(User::getId)
+                    .collect(Collectors.toList());
+        }
         Specification<AdminAuditLog> spec = Specification.allOf(
                 AdminAuditLogSpecs.occurredAtFrom(from),
                 AdminAuditLogSpecs.occurredAtTo(to),
                 AdminAuditLogSpecs.actorEmailContains(email),
                 AdminAuditLogSpecs.successEqual(success),
-                AdminAuditLogSpecs.pathTaskOrClientContains(pathContains)
+                AdminAuditLogSpecs.pathTaskOrClientContains(pathContains),
+                AdminAuditLogSpecs.textQuery(q, nameIds),
+                AdminAuditLogSpecs.kind(kind)
         );
         Page<AdminAuditLog> page = adminAuditLogRepository.findAll(spec, pageable);
         Set<Integer> userIds = new HashSet<>();
@@ -130,15 +155,28 @@ public class AdminAuditLogService {
                 .build();
     }
 
-    private static LocalDateTime parseIsoLocal(String iso) {
+    /**
+     * Accepts {@code YYYY-MM-DD} (from = start of day, to = end of day), ISO-8601 local,
+     * or offset date-times.
+     */
+    private static LocalDateTime parseBound(String iso, boolean endOfDay) {
         if (iso == null || iso.isBlank()) {
             return null;
         }
+        String s = iso.trim();
+        if (s.length() == 10) {
+            try {
+                LocalDate d = LocalDate.parse(s);
+                return endOfDay ? d.atTime(23, 59, 59, 999_000_000) : d.atStartOfDay();
+            } catch (DateTimeParseException ignored) {
+                return null;
+            }
+        }
         try {
-            return OffsetDateTime.parse(iso).toLocalDateTime();
+            return OffsetDateTime.parse(s).toLocalDateTime();
         } catch (DateTimeParseException ignored) {
             try {
-                return LocalDateTime.parse(iso);
+                return LocalDateTime.parse(s);
             } catch (DateTimeParseException ignored2) {
                 return null;
             }

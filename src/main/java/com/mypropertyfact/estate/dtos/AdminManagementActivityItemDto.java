@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AdminManagementActivityItemDto {
+    private Long id;
     private LocalDateTime occurredAt;
     /** Human-readable line kept for older clients. */
     private String event;
@@ -25,4 +26,6 @@ public class AdminManagementActivityItemDto {
     private String httpMethod;
     private boolean success;
     private String requestPath;
+    /** Dashboard route the actor was on, e.g. /admin/dashboard/manage-projects. */
+    private String clientAdminPage;
 }

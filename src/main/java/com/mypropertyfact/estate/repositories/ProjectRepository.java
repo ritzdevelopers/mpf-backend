@@ -173,12 +173,12 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
                 p.createdAt,
                 p.updatedAt,
                 w.walkthroughDesc,
-                c.state.stateName,
+                s.stateName,
                 c.name,
-                c.state.country.countryName,
+                co.countryName,
                 pt.projectTypeName,
-                c.state.country.id,
-                c.state.id,
+                co.id,
+                s.id,
                 c.id,
                 p.projectThumbnail,
                 pt.id,
@@ -188,6 +188,8 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             LEFT JOIN p.builder b
             LEFT JOIN p.projectWalkthroughs w
             LEFT JOIN p.city c
+            LEFT JOIN c.state s
+            LEFT JOIN s.country co
             LEFT JOIN p.projectTypes pt
             LEFT JOIN p.projectStatus ps
             WHERE p.slugURL = :slug
@@ -231,12 +233,12 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
                 p.createdAt,
                 p.updatedAt,
                 w.walkthroughDesc,
-                c.state.stateName,
+                s.stateName,
                 c.name,
-                c.state.country.countryName,
+                co.countryName,
                 pt.projectTypeName,
-                c.state.country.id,
-                c.state.id,
+                co.id,
+                s.id,
                 c.id,
                 p.projectThumbnail,
                 pt.id,
@@ -246,6 +248,8 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             LEFT JOIN p.builder b
             LEFT JOIN p.projectWalkthroughs w
             LEFT JOIN p.city c
+            LEFT JOIN c.state s
+            LEFT JOIN s.country co
             LEFT JOIN p.projectTypes pt
             LEFT JOIN p.projectStatus ps
             WHERE p.slugURL = :slug
@@ -288,12 +292,12 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
                 p.createdAt,
                 p.updatedAt,
                 w.walkthroughDesc,
-                c.state.stateName,
+                s.stateName,
                 c.name,
-                c.state.country.countryName,
+                co.countryName,
                 pt.projectTypeName,
-                c.state.country.id,
-                c.state.id,
+                co.id,
+                s.id,
                 c.id,
                 p.projectThumbnail,
                 pt.id,
@@ -303,6 +307,8 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             LEFT JOIN p.builder b
             LEFT JOIN p.projectWalkthroughs w
             LEFT JOIN p.city c
+            LEFT JOIN c.state s
+            LEFT JOIN s.country co
             LEFT JOIN p.projectTypes pt
             LEFT JOIN p.projectStatus ps
             WHERE p.id = :id

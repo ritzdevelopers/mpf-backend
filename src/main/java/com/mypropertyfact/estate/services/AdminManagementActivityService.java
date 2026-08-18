@@ -24,13 +24,20 @@ public class AdminManagementActivityService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public AdminManagementActivityPageResponse list(Pageable pageable) {
+    public AdminManagementActivityPageResponse list(
+            String from,
+            String to,
+            String q,
+            String kind,
+            Pageable pageable) {
         Page<AdminAuditLogEntryDto> page = adminAuditLogService.search(
+                from,
+                to,
                 null,
                 null,
                 null,
-                null,
-                null,
+                q,
+                kind,
                 pageable);
 
         Set<Integer> userIds = new HashSet<>();
@@ -75,6 +82,7 @@ public class AdminManagementActivityService {
             event = "User " + displayName + " — " + task;
         }
         return AdminManagementActivityItemDto.builder()
+                .id(row.getId())
                 .occurredAt(row.getOccurredAt())
                 .event(event)
                 .actorName(displayName)
@@ -84,6 +92,7 @@ public class AdminManagementActivityService {
                 .httpMethod(row.getHttpMethod())
                 .success(row.isSuccess())
                 .requestPath(row.getRequestPath())
+                .clientAdminPage(blankToNull(row.getClientAdminPage()))
                 .build();
     }
 
@@ -102,5 +111,13 @@ public class AdminManagementActivityService {
             return at > 0 ? email.substring(0, at) : email;
         }
         return "Unknown";
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

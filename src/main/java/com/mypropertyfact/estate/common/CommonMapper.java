@@ -21,7 +21,9 @@ public class CommonMapper {
             if (city != null) {
                 dto.setCityId(city.getId());
                 dto.setCityName(city.getName());
-                dto.setProjectAddress(entity.getProjectLocality().concat(", ").concat(city.getName()));
+                dto.setProjectAddress(joinLocalityAndCity(entity.getProjectLocality(), city.getName()));
+            } else if (entity.getProjectLocality() != null) {
+                dto.setProjectAddress(entity.getProjectLocality());
             }
             ProjectTypes projectTypes = entity.getProjectTypes();
             if (projectTypes != null) {
@@ -98,7 +100,7 @@ public class CommonMapper {
             City city = project.getCity();
             detailDto.setCityId(city.getId());
             detailDto.setCityName(city.getName());
-            detailDto.setProjectAddress(project.getProjectLocality().concat(", ") + city.getName());
+            detailDto.setProjectAddress(joinLocalityAndCity(project.getProjectLocality(), city.getName()));
             if (city.getState() != null) {
                 State state = city.getState();
                 detailDto.setStateName(state.getStateName());
@@ -313,7 +315,9 @@ public class CommonMapper {
         if (project.getCity() != null) {
             City city = project.getCity();
             projectShortDetails.setCityName(city.getName());
-            projectShortDetails.setProjectAddress(project.getProjectLocality().concat(", ") + city.getName());
+            projectShortDetails.setProjectAddress(joinLocalityAndCity(project.getProjectLocality(), city.getName()));
+        } else if (project.getProjectLocality() != null) {
+            projectShortDetails.setProjectAddress(project.getProjectLocality());
         }
         if (project.getBuilder() != null) {
             Builder builder = project.getBuilder();
@@ -328,5 +332,13 @@ public class CommonMapper {
         }
         projectShortDetails.setCreatedAt(project.getCreatedAt());
         projectShortDetails.setUpdatedAt(project.getUpdatedAt());
+    }
+
+    private String joinLocalityAndCity(String locality, String cityName) {
+        String loc = locality == null ? "" : locality.trim();
+        String city = cityName == null ? "" : cityName.trim();
+        if (loc.isEmpty()) return city.isEmpty() ? null : city;
+        if (city.isEmpty()) return loc;
+        return loc + ", " + city;
     }
 }

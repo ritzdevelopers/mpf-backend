@@ -367,9 +367,13 @@ public class ProjectService {
 
     // Map DTO fields to Project entity
     private void mapDtoToEntity(Project project, AddUpdateProjectDto dto) {
-        Optional<City> cityObj = Optional.empty();
         if (dto.getCityId() > 0) {
-            cityObj = cityRepository.findById(dto.getCityId());
+            cityRepository.findById(dto.getCityId()).ifPresentOrElse(
+                    project::setCity,
+                    () -> project.setCity(null)
+            );
+        } else {
+            project.setCity(null);
         }
         Optional<Builder> builderObj = Optional.empty();
         if (dto.getBuilderId() > 0) {
@@ -387,7 +391,6 @@ public class ProjectService {
         project.setMetaDescription(dto.getMetaDescription());
         project.setMetaKeyword(dto.getMetaKeyword());
         project.setProjectName(dto.getProjectName());
-        cityObj.ifPresent(project::setCity);
         builderObj.ifPresent(project::setBuilder);
         projectTypeObj.ifPresent(project::setProjectTypes);
         project.setProjectLocality(dto.getProjectLocality());

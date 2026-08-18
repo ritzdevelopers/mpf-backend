@@ -159,8 +159,10 @@ public class CityService {
         List<LocalityShortDto> allLocalitiesOfCity = localityRepository.findAllLocalitiesOfCity(dbCity.getId());
         dbCity.setLocalities(allLocalitiesOfCity);
         List<ProjectShortDetails> allProjects = projectRepository.findAllProjects();
-        allProjects = allProjects.stream().filter(project -> project.getCitySlug().trim()
-                .equals(url.trim())).toList();
+        allProjects = allProjects.stream()
+                .filter(project -> project.getCitySlug() != null
+                        && project.getCitySlug().trim().equals(url.trim()))
+                .toList();
         dbCity.setProjectList(allProjects);
         return dbCity;
     }

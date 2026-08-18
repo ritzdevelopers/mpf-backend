@@ -17,6 +17,8 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     Optional<User> findByDashboardUsername(String dashboardUsername);
 
+    List<User> findByFullNameContainingIgnoreCase(String fullName);
+
     @Query("""
             SELECT COUNT(DISTINCT u.id) FROM User u JOIN u.roles r
             WHERE UPPER(r.roleName) = UPPER(:roleName) AND r.isActive = true

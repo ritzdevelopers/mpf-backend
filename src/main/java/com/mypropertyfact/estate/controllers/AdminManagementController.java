@@ -22,14 +22,23 @@ public class AdminManagementController {
 
     /**
      * Paginated activity feed for the admin “Activity log” page (formatted audit entries).
+     * Date filters accept {@code YYYY-MM-DD} (full local day) or ISO date-times.
      */
     @GetMapping("/activities")
     public ResponseEntity<AdminManagementActivityPageResponse> activities(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size) {
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String kind) {
         int safeSize = Math.min(Math.max(size, 1), 100);
         int safePage = Math.max(page, 0);
         AdminManagementActivityPageResponse body = adminManagementActivityService.list(
+                from,
+                to,
+                q,
+                kind,
                 PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "occurredAt")));
         return ResponseEntity.ok(body);
     }
