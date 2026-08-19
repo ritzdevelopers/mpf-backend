@@ -391,6 +391,7 @@ public class PropertyListingService {
      * Get property listing by ID
      */
     @Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public Optional<PropertyListingDto> getPropertyListingById(Long id) {
         return propertyListingRepository.findById(id)
                 .map(this::convertToDto);
@@ -929,6 +930,20 @@ public class PropertyListingService {
         // User Information
         if (listing.getUser() != null) {
             User user = listing.getUser();
+            Hibernate.initialize(user.getRoles());
+            String listerType = "OWNER";
+            if (user.getRoles() != null) {
+                boolean isOwner = user.getRoles().stream().anyMatch(role ->
+                        role != null && ("OWNER".equalsIgnoreCase(role.getRoleName())
+                                || "PROPERTY_OWNER".equalsIgnoreCase(role.getRoleName())));
+                boolean isBroker = user.getRoles().stream().anyMatch(role ->
+                        role != null && ("BROKER".equalsIgnoreCase(role.getRoleName())
+                                || "PROPERTY_BROKER".equalsIgnoreCase(role.getRoleName())));
+                if (isBroker && !isOwner) {
+                    listerType = "BROKER";
+                }
+            }
+            dto.setListerType(listerType);
             dto.setUserId(user.getId());
             dto.setUserEmail(user.getEmail());
             dto.setUserName(user.getFullName());

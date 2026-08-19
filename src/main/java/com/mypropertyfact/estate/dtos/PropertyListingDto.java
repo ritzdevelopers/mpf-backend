@@ -91,6 +91,8 @@ public class PropertyListingDto {
     private LocalDateTime approvedAt;
     
     // User Info
+    /** OWNER or BROKER — who posted this listing on the portal. */
+    private String listerType;
     private Integer userId;
     private String userEmail;
     private String userName;
