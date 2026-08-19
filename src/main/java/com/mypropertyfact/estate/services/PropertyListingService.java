@@ -391,7 +391,6 @@ public class PropertyListingService {
      * Get property listing by ID
      */
     @Transactional(readOnly = true)
-    @Transactional(readOnly = true)
     public Optional<PropertyListingDto> getPropertyListingById(Long id) {
         return propertyListingRepository.findById(id)
                 .map(this::convertToDto);
