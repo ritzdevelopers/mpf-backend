@@ -105,6 +105,14 @@ public class AppAuthApiController {
         return hub.registerPortalUserTrusted(request, secret);
     }
 
+    /** Broker portal: login existing user after phone OTP (does not create an account). */
+    @PostMapping("/phone/login")
+    public ResponseEntity<?> loginPortalUserTrusted(
+            @RequestBody Map<String, String> request,
+            @RequestHeader(value = "X-Broker-Auth-Secret", required = false) String secret) {
+        return hub.loginPortalUserTrusted(request, secret);
+    }
+
     /** Broker portal: generate phone OTP (trusted caller only; OTP is returned for SMS delivery). */
     @PostMapping("/phone/send-otp")
     public ResponseEntity<?> sendPhoneOTP(

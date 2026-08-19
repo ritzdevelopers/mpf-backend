@@ -563,6 +563,22 @@ public class AuthHubDelegate {
     }
 
     /**
+     * Trusted portal login after phone OTP verified by Next.js.
+     * Does not create an account if the phone is not registered.
+     * POST /app/auth/phone/login
+     */
+    @Transactional
+    public ResponseEntity<?> loginPortalUserTrusted(Map<String, String> request, String internalSecret) {
+        if (brokerAuthInternalSecret == null || brokerAuthInternalSecret.isBlank()
+                || internalSecret == null || !brokerAuthInternalSecret.equals(internalSecret)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Unauthorized"));
+        }
+        request.remove("internalSecret");
+        return verifyPhoneOTPAndLoginTrusted(request);
+    }
+
+    /**
      * Trusted broker portal OTP sender.
      * Next.js calls this to generate and store the OTP; Next.js then delivers the OTP via SMS provider.
      *
@@ -592,6 +608,50 @@ public class AuthHubDelegate {
                         "message", "OTP generated",
                         "expiresIn", 300,
                         "otp", otpCode));
+    }
+
+    private ResponseEntity<?> verifyPhoneOTPAndLoginTrusted(Map<String, String> request) {
+        try {
+            String phoneRaw = request.get("phone");
+            String otpCode = request.get("otp");
+
+            if (phoneRaw == null || phoneRaw.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "Phone number is required"));
+            }
+
+            String phone = PhoneNormalizer.normalize(phoneRaw);
+
+            if (otpCode == null || otpCode.isBlank() || !otpCode.trim().matches("\\d{4}")) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Enter a valid 4-digit OTP"));
+            }
+
+            boolean otpValid = otpService.verifyPhoneOTP(phone, otpCode, OtpPurpose.PHONE_PORTAL_LOGIN);
+            if (!otpValid) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "OTP expired or not sent. Please request a new code."));
+            }
+
+            Optional<User> existingByPhone = userRepository.findByPhone(phone);
+            if (existingByPhone.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of(
+                                "success", false,
+                                "error", "account_not_found",
+                                "message", "Account not created with that number"));
+            }
+
+            User user = existingByPhone.get();
+            user.setVerified(true);
+            user = userRepository.save(user);
+            return buildPortalAuthResponse(user, "existing");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("verifyPhoneOTPAndLoginTrusted failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Unable to complete sign-in. Please try again."));
+        }
     }
 
     private ResponseEntity<?> verifyPhoneOTPAndRegisterTrusted(Map<String, String> request) {
