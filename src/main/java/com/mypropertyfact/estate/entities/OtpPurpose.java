@@ -9,5 +9,7 @@ public enum OtpPurpose {
     /** Email + password registration: OTP verifies pending signup payload. */
     REGISTRATION,
     /** Forgot-password via OTP before choosing a new password. */
-    PASSWORD_RESET
+    PASSWORD_RESET,
+    /** Broker portal login/register: OTP is sent to a phone (verified by backend). */
+    PHONE_PORTAL_LOGIN
 }

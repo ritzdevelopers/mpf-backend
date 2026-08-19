@@ -105,6 +105,14 @@ public class AppAuthApiController {
         return hub.registerPortalUserTrusted(request, secret);
     }
 
+    /** Broker portal: generate phone OTP (trusted caller only; OTP is returned for SMS delivery). */
+    @PostMapping("/phone/send-otp")
+    public ResponseEntity<?> sendPhoneOTP(
+            @RequestBody Map<String, String> request,
+            @RequestHeader(value = "X-Broker-Auth-Secret", required = false) String secret) {
+        return hub.sendPhoneOTP(request, secret);
+    }
+
     /** Optional: same JWT session shape as dashboard for shared cookies. */
     @GetMapping("/session")
     public ResponseEntity<?> session(Authentication authentication, HttpServletRequest request) {

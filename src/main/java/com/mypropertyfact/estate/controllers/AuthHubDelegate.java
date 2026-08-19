@@ -562,11 +562,44 @@ public class AuthHubDelegate {
         return verifyPhoneOTPAndRegisterTrusted(request);
     }
 
+    /**
+     * Trusted broker portal OTP sender.
+     * Next.js calls this to generate and store the OTP; Next.js then delivers the OTP via SMS provider.
+     *
+     * POST /app/auth/phone/send-otp
+     */
+    public ResponseEntity<?> sendPhoneOTP(Map<String, String> request, String internalSecret) {
+        if (brokerAuthInternalSecret == null || brokerAuthInternalSecret.isBlank()
+                || internalSecret == null || !brokerAuthInternalSecret.equals(internalSecret)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Unauthorized"));
+        }
+
+        request.remove("internalSecret");
+
+        String phoneRaw = request.get("phone");
+        if (phoneRaw == null || phoneRaw.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Phone number is required"));
+        }
+
+        String phone = PhoneNormalizer.normalize(phoneRaw);
+        String otpCode = otpService.generatePhoneOTP(phone, OtpPurpose.PHONE_PORTAL_LOGIN);
+
+        // Return otpCode to trusted caller (Next.js API route) so it can send via SMS.
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "OTP generated",
+                        "expiresIn", 300,
+                        "otp", otpCode));
+    }
+
     private ResponseEntity<?> verifyPhoneOTPAndRegisterTrusted(Map<String, String> request) {
         try {
             String phoneRaw = request.get("phone");
             String fullName = request.get("fullName");
             String emailRaw = request.get("email");
+            String otpCode = request.get("otp");
 
             if (phoneRaw == null || phoneRaw.isBlank()) {
                 return ResponseEntity.badRequest()
@@ -574,6 +607,17 @@ public class AuthHubDelegate {
             }
 
             String phone = PhoneNormalizer.normalize(phoneRaw);
+
+            if (otpCode == null || otpCode.isBlank() || !otpCode.trim().matches("\\d{4}")) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Enter a valid 4-digit OTP"));
+            }
+
+            boolean otpValid = otpService.verifyPhoneOTP(phone, otpCode, OtpPurpose.PHONE_PORTAL_LOGIN);
+            if (!otpValid) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "OTP expired or not sent. Please request a new code."));
+            }
+
             Optional<User> existingByPhone = userRepository.findByPhone(phone);
 
             if (existingByPhone.isEmpty()) {

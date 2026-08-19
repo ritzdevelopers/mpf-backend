@@ -4,6 +4,7 @@ import com.mypropertyfact.estate.entities.OTP;
 import com.mypropertyfact.estate.entities.OtpPurpose;
 import com.mypropertyfact.estate.repositories.OTPRepository;
 import com.mypropertyfact.estate.validation.ConsumerEmailNormalizer;
+import com.mypropertyfact.estate.validation.PhoneNormalizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +21,52 @@ import java.util.Random;
 public class OTPService {
 
     private final OTPRepository otpRepository;
+
+    /**
+     * Phone OTP uses the same {@code OTP} table as email OTPs.
+     * For minimal schema changes, we store the normalized phone digits in the {@code email} column.
+     */
+    public String generatePhoneOTP(String phone, OtpPurpose purpose) {
+        String normalizedPhone = PhoneNormalizer.normalize(phone);
+        String otpCode = String.format("%04d", new Random().nextInt(10000));
+
+        OTP otp = new OTP();
+        otp.setEmail(normalizedPhone); // reuse column
+        otp.setOtpCode(otpCode);
+        otp.setIsVerified(false);
+        otp.setPurpose(purpose != null ? purpose : OtpPurpose.PHONE_PORTAL_LOGIN);
+        otpRepository.save(otp);
+
+        log.info("Phone OTP generated for phone: {} purpose: {}", normalizedPhone, otp.getPurpose());
+        return otpCode;
+    }
+
+    /**
+     * Verifies phone OTP and marks it as used/verified.
+     */
+    public boolean verifyPhoneOTP(String phone, String otpCode, OtpPurpose purpose) {
+        String normalizedPhone = PhoneNormalizer.normalize(phone);
+        OtpPurpose p = purpose != null ? purpose : OtpPurpose.PHONE_PORTAL_LOGIN;
+
+        List<OTP> matches = otpRepository.findMatchingUnverified(
+                normalizedPhone, otpCode, p, PageRequest.of(0, 1));
+
+        if (matches.isEmpty()) {
+            return false;
+        }
+
+        OTP otpEntity = matches.get(0);
+        if (otpEntity.getExpiresAt().before(new Date())) {
+            log.warn("Phone OTP expired for phone: {}", phone);
+            return false;
+        }
+
+        otpEntity.setIsVerified(true);
+        otpRepository.save(otpEntity);
+
+        log.info("Phone OTP verified for phone: {} purpose: {}", phone, p);
+        return true;
+    }
 
     public String generateOTP(String email) {
         return generateOTP(email, OtpPurpose.MAGIC_LINK);
