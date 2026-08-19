@@ -33,6 +33,7 @@ import com.mypropertyfact.estate.services.OTPService;
 import com.mypropertyfact.estate.services.SendEmailHandler;
 import com.mypropertyfact.estate.services.UserRoleService;
 import com.mypropertyfact.estate.validation.ConsumerEmailNormalizer;
+import com.mypropertyfact.estate.validation.PhoneNormalizer;
 
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.Cookie;
@@ -90,6 +91,9 @@ public class AuthHubDelegate {
     private long accessTokenExpiration;
     @Value("${security.jwt.refresh.expiration-time}")
     private long refreshTokenExpiration;
+
+    @Value("${broker.auth.internal-secret:}")
+    private String brokerAuthInternalSecret;
 
     public ResponseEntity<?> register(RegisterUserDto registerUserDto,
             HttpServletResponse response) {
@@ -541,6 +545,138 @@ public class AuthHubDelegate {
                     .body(Map.of("error", "Registration failed",
                             "message", userFriendlyMessage));
         }
+    }
+
+    /**
+     * Trusted portal registration/login after phone OTP verified by Next.js (server-side).
+     * POST /app/auth/phone/register
+     */
+    @Transactional
+    public ResponseEntity<?> registerPortalUserTrusted(Map<String, String> request, String internalSecret) {
+        if (brokerAuthInternalSecret == null || brokerAuthInternalSecret.isBlank()
+                || internalSecret == null || !brokerAuthInternalSecret.equals(internalSecret)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Unauthorized"));
+        }
+        request.remove("internalSecret");
+        return verifyPhoneOTPAndRegisterTrusted(request);
+    }
+
+    private ResponseEntity<?> verifyPhoneOTPAndRegisterTrusted(Map<String, String> request) {
+        try {
+            String phoneRaw = request.get("phone");
+            String fullName = request.get("fullName");
+            String emailRaw = request.get("email");
+
+            if (phoneRaw == null || phoneRaw.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "Phone number is required"));
+            }
+
+            String phone = PhoneNormalizer.normalize(phoneRaw);
+            Optional<User> existingByPhone = userRepository.findByPhone(phone);
+
+            if (existingByPhone.isEmpty()) {
+                if (fullName == null || fullName.trim().isEmpty()) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("error", "full_name_required",
+                                    "message", "Full name is required to create your account."));
+                }
+                if (emailRaw == null || emailRaw.trim().isEmpty()) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("error", "email_required",
+                                    "message", "Email is required to create your account."));
+                }
+            }
+
+            String canonicalEmail = null;
+            if (emailRaw != null && !emailRaw.trim().isEmpty()) {
+                canonicalEmail = ConsumerEmailNormalizer.normalize(emailRaw);
+                Optional<User> existingByEmail = userRepository.findByEmailIgnoreCase(canonicalEmail);
+                if (existingByEmail.isPresent()
+                        && (existingByPhone.isEmpty()
+                                || !existingByEmail.get().getId().equals(existingByPhone.get().getId()))) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("message", "This email is already registered with another account."));
+                }
+            }
+
+            User user;
+            String userStatus;
+
+            if (existingByPhone.isPresent()) {
+                user = existingByPhone.get();
+                if (fullName != null && !fullName.trim().isEmpty()) {
+                    user.setFullName(fullName.trim());
+                }
+                if (canonicalEmail != null) {
+                    user.setEmail(canonicalEmail);
+                }
+                user.setVerified(true);
+                user = userRepository.save(user);
+                userStatus = "existing";
+            } else {
+                user = new User();
+                user.setPhone(phone);
+                user.setFullName(fullName.trim());
+                user.setEmail(canonicalEmail);
+                user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+
+                Set<MasterRole> roles = new HashSet<>();
+                String portalRole = resolvePortalRoleName(request.get("userType"));
+                masterRoleRepository.findByRoleNameIgnoreCase(portalRole).ifPresentOrElse(roles::add, () -> {
+                    MasterRole userRole = new MasterRole();
+                    userRole.setRoleName(portalRole);
+                    userRole.setDescription("Portal " + portalRole.toLowerCase() + " role");
+                    userRole.setIsActive(true);
+                    roles.add(masterRoleRepository.save(userRole));
+                });
+                user.setRoles(roles);
+                user.setVerified(true);
+                user.setEnabled(true);
+                user = userRepository.save(user);
+                userStatus = "new";
+            }
+
+            return buildPortalAuthResponse(user, userStatus);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("verifyPhoneOTPAndRegisterTrusted failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Unable to complete sign-in. Please try again."));
+        }
+    }
+
+    private ResponseEntity<?> buildPortalAuthResponse(User user, String userStatus) {
+        String jwtToken = jwtService.generateToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", userStatus);
+        response.put("token", jwtToken);
+        response.put("refreshToken", refreshToken);
+        response.put("expiresIn", jwtService.getExpirationTime());
+
+        List<String> roleNames = user.getRoles() != null
+                ? user.getRoles().stream()
+                        .filter(role -> role != null && role.getIsActive() != null && role.getIsActive())
+                        .map(role -> "ROLE_" + role.getRoleName())
+                        .toList()
+                : List.of("ROLE_USER");
+
+        Map<String, Object> userMap = new HashMap<>();
+        userMap.put("id", user.getId());
+        userMap.put("fullName", user.getFullName() != null ? user.getFullName() : "");
+        userMap.put("phone", user.getPhone() != null ? user.getPhone() : "");
+        userMap.put("email", user.getEmail() != null ? user.getEmail() : "");
+        userMap.put("role", roleNames.isEmpty() ? "ROLE_USER" : roleNames.get(0));
+        userMap.put("roles", roleNames);
+        userMap.put("userType", resolveUserTypeLabel(user));
+        userMap.put("verified", user.getVerified() != null ? user.getVerified() : false);
+        response.put("user", userMap);
+
+        return ResponseEntity.ok(response);
     }
 
     /**

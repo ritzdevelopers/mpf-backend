@@ -97,6 +97,14 @@ public class AppAuthApiController {
         return hub.verifyOTPAndRegister(request);
     }
 
+    /** Broker portal: create or login user after phone OTP verified by Next.js. */
+    @PostMapping("/phone/register")
+    public ResponseEntity<?> registerPortalUserTrusted(
+            @RequestBody Map<String, String> request,
+            @RequestHeader(value = "X-Broker-Auth-Secret", required = false) String secret) {
+        return hub.registerPortalUserTrusted(request, secret);
+    }
+
     /** Optional: same JWT session shape as dashboard for shared cookies. */
     @GetMapping("/session")
     public ResponseEntity<?> session(Authentication authentication, HttpServletRequest request) {
