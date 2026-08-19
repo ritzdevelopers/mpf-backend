@@ -678,6 +678,7 @@ public class AuthHubDelegate {
                 user.setRoles(roles);
                 user.setVerified(true);
                 user.setEnabled(true);
+                user.setUserCategory("PORTAL_USER");
                 user = userRepository.save(user);
                 userStatus = "new";
             }

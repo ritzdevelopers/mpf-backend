@@ -279,9 +279,9 @@ public class UserService{
     private String normalizeUserCategory(String raw) {
         String v = raw == null ? "" : raw.trim().toUpperCase();
         return switch (v) {
-            case "TEST_USER", "APP_USER", "ADMIN_USER" -> v;
+            case "TEST_USER", "APP_USER", "ADMIN_USER", "PORTAL_USER" -> v;
             default -> throw new IllegalArgumentException(
-                    "Invalid user category. Allowed: TEST_USER, APP_USER, ADMIN_USER.");
+                    "Invalid user category. Allowed: TEST_USER, APP_USER, ADMIN_USER, PORTAL_USER.");
         };
     }
 

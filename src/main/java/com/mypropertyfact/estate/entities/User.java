@@ -85,7 +85,7 @@ public class User implements UserDetails {
 
     /**
      * Segment for account source/testing used by Manage Users.
-     * Allowed values: TEST_USER, APP_USER, ADMIN_USER.
+     * Allowed values: TEST_USER, APP_USER, ADMIN_USER, PORTAL_USER.
      */
     @Column(name = "user_category", length = 32)
     private String userCategory = "APP_USER";
