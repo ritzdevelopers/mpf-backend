@@ -29,8 +29,6 @@ public class AdminDashboardActivityService {
      */
     public static final String TASK_BLOG = "BLOG";
     public static final String TASK_BLOG_CATEGORY = "BLOG_CATEGORY";
-    public static final String TASK_WEB_STORY = "WEB_STORY";
-    public static final String TASK_WEB_STORY_CATEGORY = "WEB_STORY_CATEGORY";
     public static final String TASK_PROPERTY_APPROVED = "PROPERTY_APPROVED";
     public static final String TASK_PROPERTY_REJECTED = "PROPERTY_REJECTED";
 

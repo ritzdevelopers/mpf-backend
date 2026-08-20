@@ -9,8 +9,6 @@ public record DashboardStatsResponse(
     long cityCount,
     long builderCount,
     long amenityCount,
-    long webStoryCategoryCount,
-    long webStoryCount,
     long projectTypeCount
 ) {
 }

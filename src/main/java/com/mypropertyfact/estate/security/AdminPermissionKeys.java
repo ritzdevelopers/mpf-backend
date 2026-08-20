@@ -20,7 +20,6 @@ public final class AdminPermissionKeys {
     public static final String MANAGE_PROJECTS = "MANAGE_PROJECTS";
     public static final String MANAGE_INSIGHTS = "MANAGE_INSIGHTS";
     public static final String MANAGE_BLOGS = "MANAGE_BLOGS";
-    public static final String MANAGE_WEB_STORIES = "MANAGE_WEB_STORIES";
     public static final String MANAGE_AMENITIES = "MANAGE_AMENITIES";
     public static final String MANAGE_FEATURES = "MANAGE_FEATURES";
     public static final String MANAGE_NEARBY_BENEFITS = "MANAGE_NEARBY_BENEFITS";
@@ -36,7 +35,6 @@ public final class AdminPermissionKeys {
             entry(MANAGE_PROJECTS, "Manage projects", "Projects, banners, galleries, FAQs, amenities, floor plans, Excel bulk upload", false),
             entry(MANAGE_INSIGHTS, "Insight management", "City price data, locality scores, headers, insight categories, top developers", false),
             entry(MANAGE_BLOGS, "Blog management", "Blogs and blog categories", false),
-            entry(MANAGE_WEB_STORIES, "Web story management", "Web stories and categories", false),
             entry(MANAGE_AMENITIES, "Amenities", "Master amenities list", false),
             entry(MANAGE_FEATURES, "Features", "Property features", false),
             entry(MANAGE_NEARBY_BENEFITS, "Nearby benefits", "Location / nearby benefit content", false),

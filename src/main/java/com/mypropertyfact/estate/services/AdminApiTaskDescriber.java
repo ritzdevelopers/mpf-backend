@@ -70,33 +70,6 @@ public final class AdminApiTaskDescriber {
             }
             return "Blog API";
         }
-        if (path.contains("/api/v1/web-story-category")) {
-            if (path.contains("/add-update") && HttpMethod.POST.matches(method)) {
-                return "Create or update web story category";
-            }
-            if (path.contains("/delete/") && HttpMethod.DELETE.matches(method)) {
-                return "Delete web story category";
-            }
-            if (path.contains("/get-all")) {
-                return "List web story categories";
-            }
-            return "Web story category API";
-        }
-        if (path.contains("/api/v1/web-story")) {
-            if (path.contains("/add-update") && HttpMethod.POST.matches(method)) {
-                return "Create or update web story";
-            }
-            if (path.contains("/delete/") && HttpMethod.DELETE.matches(method)) {
-                return "Delete web story";
-            }
-            if (path.contains("/get-all")) {
-                return "List web stories";
-            }
-            if (HttpMethod.GET.matches(method) && path.matches("/api/v1/web-story/[^/]+")) {
-                return "View web story page (HTML)";
-            }
-            return "Web story API";
-        }
         if (path.contains("/api/v1/enquiry")) {
             if (HttpMethod.POST.matches(method)) {
                 return "Submit or update enquiry";

@@ -36,8 +36,6 @@ public class AdminDashboardController {
     private final com.mypropertyfact.estate.repositories.CityRepository cityRepository;
     private final com.mypropertyfact.estate.repositories.BuilderRepository builderRepository;
     private final com.mypropertyfact.estate.repositories.AmenityRepository amenityRepository;
-    private final com.mypropertyfact.estate.repositories.WebStoryCategoryRepository webStoryCategoryRepository;
-    private final com.mypropertyfact.estate.repositories.WebStoryRepository webStoryRepository;
     private final com.mypropertyfact.estate.repositories.ProjectTypeRepository projectTypeRepository;
     private final UserRoleService userRoleService;
     private final EnquiryAccessService enquiryAccessService;
@@ -63,8 +61,6 @@ public class AdminDashboardController {
         long cityCount = 0L;
         long builderCount = 0L;
         long amenityCount = 0L;
-        long webStoryCategoryCount = 0L;
-        long webStoryCount = 0L;
         long projectTypeCount = 0L;
 
         if (userRoleService.userHasRole(user.getId(), "SUPERADMIN")) {
@@ -76,8 +72,6 @@ public class AdminDashboardController {
             cityCount = cityRepository.count();
             builderCount = builderRepository.count();
             amenityCount = amenityRepository.count();
-            webStoryCategoryCount = webStoryCategoryRepository.count();
-            webStoryCount = webStoryRepository.count();
             projectTypeCount = projectTypeRepository.count();
         } else {
             if (enquiryAccessService.canAccessEnquiries(user, request)) {
@@ -92,19 +86,17 @@ public class AdminDashboardController {
                 cityCount = cityRepository.count();
                 builderCount = builderRepository.count();
                 amenityCount = amenityRepository.count();
-                webStoryCategoryCount = webStoryCategoryRepository.count();
-                webStoryCount = webStoryRepository.count();
                 projectTypeCount = projectTypeRepository.count();
             }
         }
 
         return ResponseEntity.ok(new DashboardStatsResponse(
-                userCount, enquiryCount, projectCount, blogCount, blogCategoryCount, cityCount, builderCount, amenityCount, webStoryCategoryCount, webStoryCount, projectTypeCount
+                userCount, enquiryCount, projectCount, blogCount, blogCategoryCount, cityCount, builderCount, amenityCount, projectTypeCount
         ));
     }
 
     /**
-     * Unified “recent tasks” for the signed-in admin (blogs, web stories, categories, property reviews).
+     * Unified “recent tasks” for the signed-in admin (blogs, categories, property reviews).
      */
     @GetMapping("/dashboard/my-activity")
     public ResponseEntity<?> myRecentActivity() {

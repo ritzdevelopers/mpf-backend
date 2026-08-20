@@ -27,7 +27,6 @@ public class MpfBackupExcelExportService {
     private final BlogRepository blogRepository;
     private final PropertyListingRepository propertyListingRepository;
     private final BuilderRepository builderRepository;
-    private final WebStoryRepository webStoryRepository;
     private final UserRepository userRepository;
     private final HomeBannerRepository homeBannerRepository;
     private final AmenityRepository amenityRepository;
@@ -70,14 +69,6 @@ public class MpfBackupExcelExportService {
             MpfBackupExcelWriter.writeDtoWorkbook(
                     excelDir.resolve("builders.xlsx"), "Builders", builderRepository.findAll(), Builder.class);
         }, written, "builders.xlsx");
-
-        writeSafe(excelDir.resolve("web_stories.xlsx"), () -> {
-            MpfBackupExcelWriter.writeDtoWorkbook(
-                    excelDir.resolve("web_stories.xlsx"),
-                    "WebStories",
-                    webStoryRepository.findAll(),
-                    WebStory.class);
-        }, written, "web_stories.xlsx");
 
         writeSafe(excelDir.resolve("users.xlsx"), () -> {
             List<Map<String, Object>> rows = new ArrayList<>();

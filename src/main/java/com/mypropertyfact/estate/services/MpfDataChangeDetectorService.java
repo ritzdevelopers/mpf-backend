@@ -21,7 +21,6 @@ public class MpfDataChangeDetectorService {
             "projects",
             "property_listings",
             "blogs",
-            "web_story",
             "builders",
             "enquiries",
             "home_banners",
