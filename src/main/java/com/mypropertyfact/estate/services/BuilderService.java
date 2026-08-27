@@ -160,6 +160,46 @@ public class BuilderService {
     }
 
     /**
+     * Delete only the developer logo file for a builder (gallery is untouched).
+     * Clears {@code builderLogo} in DB after removing the file from disk.
+     */
+    @Transactional
+    public Response deleteDeveloperLogo(int builderId) {
+        Response response = new Response();
+        try {
+            Optional<Builder> opt = builderRepository.findById(builderId);
+            if (opt.isEmpty()) {
+                response.setIsSuccess(0);
+                response.setMessage("Builder not found.");
+                return response;
+            }
+            Builder builder = opt.get();
+            String logoFile = builder.getBuilderLogo();
+            if (logoFile == null || logoFile.isBlank()) {
+                response.setIsSuccess(0);
+                response.setMessage("No logo to delete for this builder.");
+                return response;
+            }
+            String slug = builder.getSlugUrl();
+            if (slug != null && !slug.isBlank()) {
+                String destDir = Paths.get(uploadDir, "builders", slug).toString();
+                String sep = destDir.endsWith(java.io.File.separator) ? "" : java.io.File.separator;
+                fileUtils.deleteFileFromDestination(logoFile.trim(), destDir + sep);
+            }
+            builder.setBuilderLogo(null);
+            builder.setUpdatedAt(LocalDateTime.now());
+            builderRepository.save(builder);
+            response.setIsSuccess(1);
+            response.setMessage("Developer logo deleted successfully.");
+        } catch (Exception e) {
+            log.error("deleteDeveloperLogo failed: {}", e.getMessage());
+            response.setIsSuccess(0);
+            response.setMessage(e.getMessage() != null ? e.getMessage() : "Could not delete logo.");
+        }
+        return response;
+    }
+
+    /**
      * Upload developer logo and/or replace gallery images from a ZIP of images.
      * Files are stored under {@code {upload_dir}/builders/{slugUrl}/}.
      */

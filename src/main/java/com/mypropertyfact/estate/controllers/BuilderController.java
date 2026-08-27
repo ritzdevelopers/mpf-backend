@@ -57,6 +57,18 @@ public class BuilderController {
     }
 
     /**
+     * Delete only the selected developer's logo (file + DB field). Gallery is not affected.
+     */
+    @DeleteMapping("/delete-developer-logo/{builderId}")
+    @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_OPTIONS')")
+    public ResponseEntity<Response> deleteDeveloperLogo(@PathVariable("builderId") int builderId) {
+        Response response = builderService.deleteDeveloperLogo(builderId);
+        return ResponseEntity.status(
+                        response.getIsSuccess() == 1 ? HttpStatus.OK : HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
+
+    /**
      * Bulk upload builder logos from a single ZIP file.
      * File names must match builder slug/name, e.g. {@code saya-homes.jpg} or {@code saya-homes-logo.png}.
      */
