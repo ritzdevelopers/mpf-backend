@@ -172,7 +172,10 @@ public class PropertyListingController {
      * Update property listing
      * PUT /api/user/property-listings/{id}
      */
-    @PutMapping(value = "/{id}", consumes = "multipart/form-data")
+    @RequestMapping(
+            value = "/{id}",
+            method = {RequestMethod.PUT, RequestMethod.PATCH},
+            consumes = "multipart/form-data")
     public ResponseEntity<?> updatePropertyListing(
             @PathVariable Long id,
             @RequestPart(value = "images", required = false) MultipartFile[] images,
