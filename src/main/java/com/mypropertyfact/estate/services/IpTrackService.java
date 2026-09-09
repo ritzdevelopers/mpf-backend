@@ -365,7 +365,7 @@ public class IpTrackService {
                 || ip.startsWith("172.31.");
     }
 
-    static String resolveClientIp(HttpServletRequest request) {
+    public static String resolveClientIp(HttpServletRequest request) {
         String cf = request.getHeader("CF-Connecting-IP");
         if (cf != null && !cf.isBlank()) {
             return cf.trim();
@@ -486,6 +486,18 @@ public class IpTrackService {
             return null;
         }
     }
+
+    public GeoSnapshot resolveGeo(String ip) {
+        GeoInfo info = lookupGeo(ip);
+        if (info == null) {
+            return null;
+        }
+        return new GeoSnapshot(
+                info.country(), info.region(), info.city(), info.latitude(), info.longitude(), info.org());
+    }
+
+    public record GeoSnapshot(
+            String country, String region, String city, Double latitude, Double longitude, String org) {}
 
     private record GeoInfo(
             String country, String region, String city, Double latitude, Double longitude, String org) {}

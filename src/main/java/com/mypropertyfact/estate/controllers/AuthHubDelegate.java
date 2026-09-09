@@ -32,6 +32,7 @@ import com.mypropertyfact.estate.services.JwtService;
 import com.mypropertyfact.estate.services.OTPService;
 import com.mypropertyfact.estate.services.SendEmailHandler;
 import com.mypropertyfact.estate.services.UserRoleService;
+import com.mypropertyfact.estate.services.WebsiteLoginService;
 import com.mypropertyfact.estate.validation.ConsumerEmailNormalizer;
 import com.mypropertyfact.estate.validation.PhoneNormalizer;
 
@@ -80,6 +81,7 @@ public class AuthHubDelegate {
     private final AdminPermissionService adminPermissionService;
     private final EnquiryAccessService enquiryAccessService;
     private final AdminPasswordResetRequestService adminPasswordResetRequestService;
+    private final WebsiteLoginService websiteLoginService;
 
     @Value("${cookies.domain:}")
     private String cookiesDomain;
@@ -610,6 +612,95 @@ public class AuthHubDelegate {
                         "otp", otpCode));
     }
 
+    /**
+     * Public website OTP login/register (not the broker portal).
+     * Existing phone → sign in. New phone → create APP_USER after name is provided.
+     */
+    @Transactional
+    public ResponseEntity<?> loginOrRegisterWebsiteUserTrusted(
+            Map<String, String> request, String internalSecret, HttpServletRequest httpRequest) {
+        if (brokerAuthInternalSecret == null || brokerAuthInternalSecret.isBlank()
+                || internalSecret == null || !brokerAuthInternalSecret.equals(internalSecret)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Unauthorized"));
+        }
+        request.remove("internalSecret");
+
+        try {
+            String phoneRaw = request.get("phone");
+            String otpCode = request.get("otp");
+            String fullName = request.get("fullName");
+
+            if (phoneRaw == null || phoneRaw.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Phone number is required"));
+            }
+            if (otpCode == null || otpCode.isBlank() || !otpCode.trim().matches("\\d{4}")) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Enter a valid 4-digit OTP"));
+            }
+
+            String phone = PhoneNormalizer.normalize(phoneRaw);
+            if (!otpService.isValidPhoneOTP(phone, otpCode, OtpPurpose.PHONE_PORTAL_LOGIN)) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "OTP expired or not sent. Please request a new code."));
+            }
+
+            Optional<User> existingByPhone = userRepository.findByPhone(phone);
+            if (existingByPhone.isEmpty() && (fullName == null || fullName.trim().isEmpty())) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "error", "full_name_required",
+                        "message", "Enter your name to create your account."));
+            }
+
+            boolean otpValid = otpService.verifyPhoneOTP(phone, otpCode, OtpPurpose.PHONE_PORTAL_LOGIN);
+            if (!otpValid) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "OTP expired or not sent. Please request a new code."));
+            }
+
+            User user;
+            String userStatus;
+            if (existingByPhone.isPresent()) {
+                user = existingByPhone.get();
+                if (fullName != null && !fullName.trim().isEmpty()
+                        && (user.getFullName() == null || user.getFullName().isBlank())) {
+                    user.setFullName(fullName.trim());
+                }
+                user.setVerified(true);
+                user = userRepository.save(user);
+                userStatus = "existing";
+            } else {
+                user = new User();
+                user.setPhone(phone);
+                user.setFullName(fullName.trim());
+                user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+                Set<MasterRole> roles = new HashSet<>();
+                masterRoleRepository.findByRoleNameIgnoreCase("USER").ifPresentOrElse(roles::add, () -> {
+                    MasterRole userRole = new MasterRole();
+                    userRole.setRoleName("USER");
+                    userRole.setDescription("Website member");
+                    userRole.setIsActive(true);
+                    roles.add(masterRoleRepository.save(userRole));
+                });
+                user.setRoles(roles);
+                user.setVerified(true);
+                user.setEnabled(true);
+                user.setUserCategory("APP_USER");
+                user = userRepository.save(user);
+                userStatus = "new";
+            }
+
+            websiteLoginService.record(user, httpRequest, "website-otp", userStatus);
+            return buildPortalAuthResponse(user, userStatus);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("loginOrRegisterWebsiteUserTrusted failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Unable to complete sign-in. Please try again."));
+        }
+    }
+
     private ResponseEntity<?> verifyPhoneOTPAndLoginTrusted(Map<String, String> request) {
         try {
             String phoneRaw = request.get("phone");
@@ -971,6 +1062,11 @@ public class AuthHubDelegate {
         for (MasterRole role : user.getRoles()) {
             if (role != null && "BROKER".equalsIgnoreCase(role.getRoleName())) {
                 return "BROKER";
+            }
+        }
+        for (MasterRole role : user.getRoles()) {
+            if (role != null && "USER".equalsIgnoreCase(role.getRoleName())) {
+                return "USER";
             }
         }
         return "BROKER";

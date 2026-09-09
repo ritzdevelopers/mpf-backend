@@ -68,6 +68,20 @@ public class OTPService {
         return true;
     }
 
+    /** Peek phone OTP without consuming it (used when a new website user still needs a name). */
+    public boolean isValidPhoneOTP(String phone, String otpCode, OtpPurpose purpose) {
+        String normalizedPhone = PhoneNormalizer.normalize(phone);
+        OtpPurpose p = purpose != null ? purpose : OtpPurpose.PHONE_PORTAL_LOGIN;
+
+        List<OTP> matches = otpRepository.findMatchingUnverified(
+                normalizedPhone, otpCode, p, PageRequest.of(0, 1));
+
+        if (matches.isEmpty()) {
+            return false;
+        }
+        return matches.get(0).getExpiresAt().after(new Date());
+    }
+
     public String generateOTP(String email) {
         return generateOTP(email, OtpPurpose.MAGIC_LINK);
     }

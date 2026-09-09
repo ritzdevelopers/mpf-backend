@@ -121,6 +121,15 @@ public class AppAuthApiController {
         return hub.sendPhoneOTP(request, secret);
     }
 
+    /** Public website OTP login/register (not broker portal). */
+    @PostMapping("/phone/website")
+    public ResponseEntity<?> websitePhoneAuth(
+            @RequestBody Map<String, String> request,
+            @RequestHeader(value = "X-Broker-Auth-Secret", required = false) String secret,
+            HttpServletRequest httpRequest) {
+        return hub.loginOrRegisterWebsiteUserTrusted(request, secret, httpRequest);
+    }
+
     /** Optional: same JWT session shape as dashboard for shared cookies. */
     @GetMapping("/session")
     public ResponseEntity<?> session(Authentication authentication, HttpServletRequest request) {

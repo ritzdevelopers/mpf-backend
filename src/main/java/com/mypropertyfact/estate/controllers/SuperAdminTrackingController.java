@@ -9,10 +9,12 @@ import com.mypropertyfact.estate.dtos.SiteTrafficSummaryResponse;
 import com.mypropertyfact.estate.dtos.SiteTrafficVisitPageResponse;
 import com.mypropertyfact.estate.dtos.SuperAdminNotificationsResponse;
 import com.mypropertyfact.estate.dtos.TrafficRevealRequest;
+import com.mypropertyfact.estate.dtos.WebsiteLoginPageResponse;
 import com.mypropertyfact.estate.services.AdminAuditLogService;
 import com.mypropertyfact.estate.services.IpTrackService;
 import com.mypropertyfact.estate.services.SiteTrafficService;
 import com.mypropertyfact.estate.services.SuperAdminNotificationService;
+import com.mypropertyfact.estate.services.WebsiteLoginService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +50,7 @@ public class SuperAdminTrackingController {
     private final IpTrackService ipTrackService;
     private final AdminAuditLogService adminAuditLogService;
     private final SuperAdminNotificationService superAdminNotificationService;
+    private final WebsiteLoginService websiteLoginService;
 
     @Value("${http.secure}")
     private boolean httpSecure;
@@ -167,6 +170,15 @@ public class SuperAdminTrackingController {
                 .size(result.getSize())
                 .build();
         return ResponseEntity.ok(body);
+    }
+
+    @GetMapping("/website-logins")
+    public ResponseEntity<WebsiteLoginPageResponse> websiteLogins(
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(required = false) String q) {
+        return ResponseEntity.ok(websiteLoginService.list(request, q, page, size));
     }
 
     @GetMapping("/notifications")
