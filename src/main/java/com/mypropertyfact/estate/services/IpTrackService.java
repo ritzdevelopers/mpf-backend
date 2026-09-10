@@ -318,35 +318,78 @@ public class IpTrackService {
             return cached.info;
         }
         try {
-            String url = "http://ip-api.com/json/"
-                    + java.net.URLEncoder.encode(ip, java.nio.charset.StandardCharsets.UTF_8)
-                    + "?fields=status,country,regionName,city,lat,lon,org,query";
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(3))
-                    .GET()
-                    .build();
-            HttpResponse<String> res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
-            if (res.statusCode() != 200 || res.body() == null || res.body().isBlank()) {
-                return cached != null ? cached.info : null;
+            GeoInfo info = lookupGeoFromOfficialProviders(ip);
+            if (info != null) {
+                geoCache.put(ip, new GeoCacheEntry(info, now));
+                return info;
             }
-            JsonNode node = objectMapper.readTree(res.body());
-            if (!"success".equalsIgnoreCase(node.path("status").asText())) {
-                return cached != null ? cached.info : null;
-            }
-            GeoInfo info = new GeoInfo(
-                    blankToNull(node.path("country").asText(null)),
-                    blankToNull(node.path("regionName").asText(null)),
-                    blankToNull(node.path("city").asText(null)),
-                    node.hasNonNull("lat") ? node.get("lat").asDouble() : null,
-                    node.hasNonNull("lon") ? node.get("lon").asDouble() : null,
-                    blankToNull(node.path("org").asText(null)));
-            geoCache.put(ip, new GeoCacheEntry(info, now));
-            return info;
+            return cached != null ? cached.info : null;
         } catch (Exception ex) {
             log.debug("IP geo lookup failed for {}: {}", ip, ex.toString());
             return cached != null ? cached.info : null;
         }
+    }
+
+    /** Official HTTPS providers only: ipwho.is, then ipapi.co. */
+    private GeoInfo lookupGeoFromOfficialProviders(String ip) throws Exception {
+        String encoded = java.net.URLEncoder.encode(ip, java.nio.charset.StandardCharsets.UTF_8);
+        String[] urls = new String[] {
+                "https://ipwho.is/" + encoded,
+                "https://ipapi.co/" + encoded + "/json/"
+        };
+        for (String url : urls) {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(3))
+                    .header("Accept", "application/json")
+                    .GET()
+                    .build();
+            HttpResponse<String> res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() != 200 || res.body() == null || res.body().isBlank()) {
+                continue;
+            }
+            JsonNode node = objectMapper.readTree(res.body());
+            GeoInfo info = url.contains("ipwho.is")
+                    ? parseIpWho(node)
+                    : parseIpApiCo(node);
+            if (info != null) {
+                return info;
+            }
+        }
+        return null;
+    }
+
+    private static GeoInfo parseIpWho(JsonNode node) {
+        if (node == null || (node.has("success") && !node.path("success").asBoolean(true))) {
+            return null;
+        }
+        String city = blankToNull(node.path("city").asText(null));
+        if (city == null) return null;
+        JsonNode connection = node.path("connection");
+        String org = blankToNull(connection.path("isp").asText(null));
+        if (org == null) org = blankToNull(connection.path("org").asText(null));
+        return new GeoInfo(
+                blankToNull(node.path("country").asText(null)),
+                blankToNull(node.path("region").asText(null)),
+                city,
+                node.hasNonNull("latitude") ? node.get("latitude").asDouble() : null,
+                node.hasNonNull("longitude") ? node.get("longitude").asDouble() : null,
+                org);
+    }
+
+    private static GeoInfo parseIpApiCo(JsonNode node) {
+        if (node == null || node.path("error").asBoolean(false)) {
+            return null;
+        }
+        String city = blankToNull(node.path("city").asText(null));
+        if (city == null) return null;
+        return new GeoInfo(
+                blankToNull(node.path("country_name").asText(null)),
+                blankToNull(node.path("region").asText(null)),
+                city,
+                node.hasNonNull("latitude") ? node.get("latitude").asDouble() : null,
+                node.hasNonNull("longitude") ? node.get("longitude").asDouble() : null,
+                blankToNull(node.path("org").asText(null)));
     }
 
     private static boolean isPrivateIp(String ip) {
