@@ -31,4 +31,15 @@ public interface UserRepository extends JpaRepository<User, Integer> {
             ORDER BY u.createdAt ASC
             """)
     List<User> findPendingPortalApprovals();
+
+    @Query("""
+            SELECT DISTINCT u FROM User u LEFT JOIN u.roles r
+            WHERE UPPER(COALESCE(u.userCategory, '')) = 'PORTAL_USER'
+               OR UPPER(COALESCE(r.roleName, '')) IN (
+                    'BROKER', 'OWNER', 'PROPERTY_OWNER',
+                    'ROLE_BROKER', 'ROLE_OWNER', 'ROLE_PROPERTY_OWNER'
+               )
+            ORDER BY u.fullName ASC
+            """)
+    List<User> findPortalBrokerOwnerUsers();
 }

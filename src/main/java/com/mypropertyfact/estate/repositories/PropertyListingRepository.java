@@ -129,4 +129,12 @@ public interface PropertyListingRepository extends JpaRepository<PropertyListing
             WHERE pl.id IN :ids
             """)
     List<PropertyListing> findAllWithCityStateByIdIn(@Param("ids") List<Long> ids);
+
+    @Query("""
+            SELECT pl.user.id, pl.approvalStatus, COUNT(pl)
+            FROM PropertyListing pl
+            WHERE pl.user.id IN :userIds
+            GROUP BY pl.user.id, pl.approvalStatus
+            """)
+    List<Object[]> countGroupedByUserIdAndStatus(@Param("userIds") List<Integer> userIds);
 }

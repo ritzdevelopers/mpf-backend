@@ -9,8 +9,10 @@ import com.mypropertyfact.estate.dtos.SiteTrafficSummaryResponse;
 import com.mypropertyfact.estate.dtos.SiteTrafficVisitPageResponse;
 import com.mypropertyfact.estate.dtos.SuperAdminNotificationsResponse;
 import com.mypropertyfact.estate.dtos.TrafficRevealRequest;
+import com.mypropertyfact.estate.dtos.PortalListingStatsResponse;
 import com.mypropertyfact.estate.dtos.WebsiteLoginPageResponse;
 import com.mypropertyfact.estate.services.AdminAuditLogService;
+import com.mypropertyfact.estate.services.PortalListingStatsService;
 import com.mypropertyfact.estate.services.IpTrackService;
 import com.mypropertyfact.estate.services.SiteTrafficService;
 import com.mypropertyfact.estate.services.SuperAdminNotificationService;
@@ -51,6 +53,7 @@ public class SuperAdminTrackingController {
     private final AdminAuditLogService adminAuditLogService;
     private final SuperAdminNotificationService superAdminNotificationService;
     private final WebsiteLoginService websiteLoginService;
+    private final PortalListingStatsService portalListingStatsService;
 
     @Value("${http.secure}")
     private boolean httpSecure;
@@ -179,6 +182,11 @@ public class SuperAdminTrackingController {
             @RequestParam(defaultValue = "25") int size,
             @RequestParam(required = false) String q) {
         return ResponseEntity.ok(websiteLoginService.list(request, q, page, size));
+    }
+
+    @GetMapping("/portal-listing-stats")
+    public ResponseEntity<PortalListingStatsResponse> portalListingStats() {
+        return ResponseEntity.ok(portalListingStatsService.build());
     }
 
     @GetMapping("/notifications")
