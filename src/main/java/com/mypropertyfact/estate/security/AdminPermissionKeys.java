@@ -30,7 +30,7 @@ public final class AdminPermissionKeys {
 
     private static final List<Map<String, String>> DEFINITION_ROWS = List.of(
             entry(MANAGE_WEBSITE, "Manage website", "Home banners and similar site content", false),
-            entry(MANAGE_LISTING_FAQS, "Manage listing page FAQs", "FAQs for listing pages (city hubs, BHK, shops, food court, etc.)", false),
+            entry(MANAGE_LISTING_FAQS, "Manage listing page FAQs", "FAQs and SEO content for listing pages (commercial property, new projects, flats, apartments, BHK, shops, etc.)", false),
             entry(MANAGE_OPTIONS, "Manage options", "Countries, states, cities, builders, project types, careers, etc.", false),
             entry(MANAGE_PROJECTS, "Manage projects", "Projects, banners, galleries, FAQs, amenities, floor plans, Excel bulk upload", false),
             entry(MANAGE_INSIGHTS, "Insight management", "City price data, locality scores, headers, insight categories, top developers", false),
