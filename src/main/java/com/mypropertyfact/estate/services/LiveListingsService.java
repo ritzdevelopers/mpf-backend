@@ -13,6 +13,7 @@ import com.mypropertyfact.estate.enums.ProjectApprovalStatus;
 import com.mypropertyfact.estate.repositories.ListingActivityEventRepository;
 import com.mypropertyfact.estate.repositories.ProjectRepository;
 import com.mypropertyfact.estate.repositories.PropertyListingRepository;
+import com.mypropertyfact.estate.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,9 +24,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +40,7 @@ public class LiveListingsService {
     private final ProjectRepository projectRepository;
     private final PropertyListingRepository propertyListingRepository;
     private final ListingActivityEventRepository listingActivityEventRepository;
+    private final UserRepository userRepository;
     private final UserRoleService userRoleService;
 
     @Transactional(readOnly = true)
@@ -48,10 +52,14 @@ public class LiveListingsService {
         Map<String, List<ListingActivityEvent>> activity = loadActivity(
                 projects.stream().map(project -> (long) project.getId()).toList(),
                 listings.stream().map(PropertyListing::getId).toList());
+        Map<Integer, String> actorNames = loadActorNames(activity, projects, listings);
 
         List<LiveListingRowDto> rows = new ArrayList<>();
         for (Project project : projects) {
-            rows.add(toProjectRow(project, activity.getOrDefault(key("PROJECT", (long) project.getId()), List.of())));
+            rows.add(toProjectRow(
+                    project,
+                    activity.getOrDefault(key("PROJECT", (long) project.getId()), List.of()),
+                    actorNames));
         }
 
         long brokerListings = 0;
@@ -59,7 +67,8 @@ public class LiveListingsService {
         for (PropertyListing listing : listings) {
             LiveListingRowDto row = toPortalRow(
                     listing,
-                    activity.getOrDefault(key("PORTAL", listing.getId()), List.of()));
+                    activity.getOrDefault(key("PORTAL", listing.getId()), List.of()),
+                    actorNames);
             rows.add(row);
             if ("OWNER".equals(row.listerType())) {
                 ownerListings += 1;
@@ -87,7 +96,10 @@ public class LiveListingsService {
         );
     }
 
-    private LiveListingRowDto toProjectRow(Project project, List<ListingActivityEvent> events) {
+    private LiveListingRowDto toProjectRow(
+            Project project,
+            List<ListingActivityEvent> events,
+            Map<Integer, String> actorNames) {
         String city = project.getCity() != null ? blankToNull(project.getCity().getName()) : null;
         String builder = project.getBuilder() != null ? blankToNull(project.getBuilder().getBuilderName()) : null;
         String type = project.getProjectTypes() != null
@@ -100,12 +112,14 @@ public class LiveListingsService {
         LocalDateTime wentLive = firstNonNull(project.getUpdatedAt(), project.getCreatedAt());
         String title = firstNonBlank(project.getProjectName(), "Untitled project");
         User creator = project.getCreatedBy();
-        String listedBy = creator != null
-                ? firstNonBlank(creator.getFullName(), creator.getEmail(), "Admin")
-                : "Admin";
+        String listedBy = firstRealName(
+                ListingActivityService.displayName(creator),
+                creator != null ? actorNames.get(creator.getId()) : null,
+                personNameFromEvents(events, actorNames));
 
         List<LiveListingEditDto> edits = toEdits(
                 events,
+                actorNames,
                 listedBy,
                 project.getCreatedAt(),
                 project.getUpdatedAt(),
@@ -142,12 +156,16 @@ public class LiveListingsService {
         );
     }
 
-    private LiveListingRowDto toPortalRow(PropertyListing listing, List<ListingActivityEvent> events) {
+    private LiveListingRowDto toPortalRow(
+            PropertyListing listing,
+            List<ListingActivityEvent> events,
+            Map<Integer, String> actorNames) {
         User user = listing.getUser();
         String listerType = user != null ? userRoleService.resolvePortalPersonaLabel(user) : "BROKER";
-        String listedBy = user != null
-                ? firstNonBlank(user.getFullName(), user.getEmail(), "Portal user")
-                : "Portal user";
+        String listedBy = firstRealName(
+                ListingActivityService.displayName(user),
+                user != null ? actorNames.get(user.getId()) : null,
+                personNameFromEvents(events, actorNames));
         String listedByEmail = user != null ? blankToNull(user.getEmail()) : null;
         City city = listing.getCity();
         String title = firstNonBlank(listing.getTitle(), listing.getProjectName(), buildFallbackTitle(listing));
@@ -156,6 +174,7 @@ public class LiveListingsService {
 
         List<LiveListingEditDto> edits = toEdits(
                 events,
+                actorNames,
                 listedBy,
                 listing.getCreatedAt(),
                 listing.getUpdatedAt(),
@@ -203,6 +222,44 @@ public class LiveListingsService {
         return byKey;
     }
 
+    private Map<Integer, String> loadActorNames(
+            Map<String, List<ListingActivityEvent>> activity,
+            List<Project> projects,
+            List<PropertyListing> listings) {
+        Set<Integer> ids = new HashSet<>();
+        for (List<ListingActivityEvent> events : activity.values()) {
+            for (ListingActivityEvent event : events) {
+                if (event.getActorUserId() != null) {
+                    ids.add(event.getActorUserId());
+                }
+            }
+        }
+        for (Project project : projects) {
+            if (project.getCreatedBy() != null && project.getCreatedBy().getId() != null) {
+                ids.add(project.getCreatedBy().getId());
+            }
+        }
+        for (PropertyListing listing : listings) {
+            if (listing.getUser() != null && listing.getUser().getId() != null) {
+                ids.add(listing.getUser().getId());
+            }
+            if (listing.getApprovedBy() != null && listing.getApprovedBy().getId() != null) {
+                ids.add(listing.getApprovedBy().getId());
+            }
+        }
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<Integer, String> names = new HashMap<>();
+        for (User user : userRepository.findAllById(ids)) {
+            String name = ListingActivityService.displayName(user);
+            if (!ListingActivityService.isGenericActorName(name)) {
+                names.put(user.getId(), name);
+            }
+        }
+        return names;
+    }
+
     private List<ListingActivityEvent> loadEvents(String source, Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
@@ -218,6 +275,7 @@ public class LiveListingsService {
 
     private List<LiveListingEditDto> toEdits(
             List<ListingActivityEvent> stored,
+            Map<Integer, String> actorNames,
             String fallbackName,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
@@ -230,25 +288,26 @@ public class LiveListingsService {
                     .sorted(Comparator.comparing(
                             ListingActivityEvent::getOccurredAt, Comparator.nullsLast(Comparator.reverseOrder())))
                     .limit(MAX_EDITS_PER_ROW)
-                    .map(this::toEditDto)
+                    .map(event -> toEditDto(event, actorNames))
                     .forEach(out::add);
             return out;
         }
 
+        String knownName = firstRealName(fallbackName);
         if (updatedAt != null && createdAt != null && updatedAt.isAfter(createdAt.plusMinutes(1))) {
             out.add(new LiveListingEditDto(
-                    firstNonBlank(fallbackName, "Unknown"),
+                    firstNonBlank(knownName, "Unknown"),
                     ListingActivityService.ACTION_UPDATED,
                     actionLabel(ListingActivityService.ACTION_UPDATED),
                     blankToNull(title),
                     updatedAt));
         }
         if (approvedAt != null) {
-            String approverName = approver != null
-                    ? firstNonBlank(approver.getFullName(), approver.getEmail(), "Admin")
-                    : "Admin";
+            String approverName = firstRealName(
+                    ListingActivityService.displayName(approver),
+                    approver != null ? actorNames.get(approver.getId()) : null);
             out.add(new LiveListingEditDto(
-                    approverName,
+                    firstNonBlank(approverName, "Unknown"),
                     ListingActivityService.ACTION_APPROVED,
                     actionLabel(ListingActivityService.ACTION_APPROVED),
                     "Approved and made live",
@@ -256,7 +315,7 @@ public class LiveListingsService {
         }
         if (createdAt != null) {
             out.add(new LiveListingEditDto(
-                    firstNonBlank(fallbackName, "Unknown"),
+                    firstNonBlank(knownName, "Unknown"),
                     ListingActivityService.ACTION_CREATED,
                     actionLabel(ListingActivityService.ACTION_CREATED),
                     blankToNull(title),
@@ -270,13 +329,67 @@ public class LiveListingsService {
         return out;
     }
 
-    private LiveListingEditDto toEditDto(ListingActivityEvent event) {
+    private LiveListingEditDto toEditDto(ListingActivityEvent event, Map<Integer, String> actorNames) {
         return new LiveListingEditDto(
-                firstNonBlank(event.getActorName(), "Unknown"),
+                firstNonBlank(resolveEventActor(event, actorNames), "Unknown"),
                 event.getAction(),
                 actionLabel(event.getAction()),
                 blankToNull(event.getDetail()),
                 event.getOccurredAt());
+    }
+
+    private static String personNameFromEvents(
+            List<ListingActivityEvent> events,
+            Map<Integer, String> actorNames) {
+        if (events == null || events.isEmpty()) {
+            return null;
+        }
+        String createdBy = null;
+        String any = null;
+        List<ListingActivityEvent> ordered = events.stream()
+                .sorted(Comparator.comparing(
+                        ListingActivityEvent::getOccurredAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+        for (ListingActivityEvent event : ordered) {
+            String name = resolveEventActor(event, actorNames);
+            if (ListingActivityService.isGenericActorName(name)) {
+                continue;
+            }
+            if (any == null) {
+                any = name;
+            }
+            if (createdBy == null && ListingActivityService.ACTION_CREATED.equalsIgnoreCase(event.getAction())) {
+                createdBy = name;
+            }
+        }
+        return firstNonBlank(createdBy, any);
+    }
+
+    private static String resolveEventActor(ListingActivityEvent event, Map<Integer, String> actorNames) {
+        if (event == null) {
+            return null;
+        }
+        String stored = event.getActorName();
+        String fromUser = event.getActorUserId() != null ? actorNames.get(event.getActorUserId()) : null;
+        if (!ListingActivityService.isGenericActorName(fromUser)) {
+            return fromUser;
+        }
+        if (!ListingActivityService.isGenericActorName(stored)) {
+            return stored.trim();
+        }
+        return null;
+    }
+
+    private static String firstRealName(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (!ListingActivityService.isGenericActorName(value)) {
+                return value.trim();
+            }
+        }
+        return null;
     }
 
     private static String summaryOf(LiveListingEditDto edit, String title) {

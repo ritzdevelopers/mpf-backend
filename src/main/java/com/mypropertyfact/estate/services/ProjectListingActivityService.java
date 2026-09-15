@@ -330,8 +330,10 @@ public class ProjectListingActivityService {
                 String.valueOf(project.getId()),
                 firstNonBlank(project.getProjectName(), "Untitled project"),
                 creator != null
-                        ? firstNonBlank(creator.getFullName(), creator.getEmail(), "Admin")
-                        : "Admin",
+                        ? firstNonBlank(
+                                ListingActivityService.displayName(creator),
+                                creator.getEmail())
+                        : null,
                 creator != null ? blankToNull(creator.getEmail()) : null,
                 creator != null ? displayRole(creator) : "Admin",
                 creator != null ? creator.getId() : null,
@@ -503,8 +505,8 @@ public class ProjectListingActivityService {
                     rejected ? ListingActivityService.ACTION_REJECTED : ListingActivityService.ACTION_APPROVED,
                     rejected ? "Project rejected" : "Project approved",
                     approver != null
-                            ? firstNonBlank(approver.getFullName(), approver.getEmail(), "Admin")
-                            : "Admin",
+                            ? firstNonBlank(ListingActivityService.displayName(approver), "Unknown")
+                            : "Unknown",
                     approver != null ? approver.getId() : null,
                     formatDate(listing.getApprovedAt()),
                     formatTime(listing.getApprovedAt()),

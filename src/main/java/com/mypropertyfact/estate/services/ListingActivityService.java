@@ -57,7 +57,7 @@ public class ListingActivityService {
             row.setDetail(truncate(detail, 500));
             if (actor != null) {
                 row.setActorUserId(actor.getId());
-                row.setActorName(firstNonBlank(actor.getFullName(), actor.getEmail(), "Unknown"));
+                row.setActorName(firstNonBlank(displayName(actor), "Unknown"));
             } else {
                 row.setActorName("System");
             }
@@ -109,6 +109,24 @@ public class ListingActivityService {
             return "";
         }
         return String.valueOf(value).trim();
+    }
+
+    public static String displayName(User user) {
+        if (user == null) {
+            return null;
+        }
+        return firstNonBlank(user.getFullName(), user.getDashboardUsername(), user.getEmail());
+    }
+
+    public static boolean isGenericActorName(String name) {
+        if (name == null || name.isBlank()) {
+            return true;
+        }
+        String normalized = name.trim();
+        return "Admin".equalsIgnoreCase(normalized)
+                || "System".equalsIgnoreCase(normalized)
+                || "Unknown".equalsIgnoreCase(normalized)
+                || "Portal user".equalsIgnoreCase(normalized);
     }
 
     private static String firstNonBlank(String... values) {
