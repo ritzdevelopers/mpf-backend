@@ -222,7 +222,7 @@ public class ProjectExcelUploadService {
                 ListingActivityService.SOURCE_PROJECT,
                 (long) project.getId(),
                 isNew ? ListingActivityService.ACTION_CREATED : ListingActivityService.ACTION_UPDATED,
-                project.getProjectName());
+                isNew ? project.getProjectName() : "Updated via Excel upload");
 
         Optional<ProjectWalkthrough> existingWalkthrough =
                 projectWalkthroughRepository.findFirstByProject_IdOrderByIdDesc(project.getId());

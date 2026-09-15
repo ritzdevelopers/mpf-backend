@@ -462,6 +462,7 @@ public class PropertyListingService {
                     .orElseThrow(() -> new RuntimeException("Property listing not found or unauthorized"));
         }
         ProjectApprovalStatus previousStatus = listing.getApprovalStatus();
+        List<String> changes = portalChangeSummary(listing, dto, images);
 
         // ========== UPDATE BASIC INFORMATION ==========
         if (dto.getListingType() != null)
@@ -733,7 +734,7 @@ public class PropertyListingService {
                 saved.getId(),
                 ListingActivityService.ACTION_UPDATED,
                 user,
-                listingTitle(saved));
+                ListingActivityService.describeChanges(changes, listingTitle(saved)));
         if (previousStatus != saved.getApprovalStatus()) {
             listingActivityService.record(
                     ListingActivityService.SOURCE_PORTAL,
@@ -998,6 +999,39 @@ public class PropertyListingService {
         }
 
         return dto;
+    }
+
+    private static List<String> portalChangeSummary(
+            PropertyListing listing,
+            PropertyListingRequestDto dto,
+            MultipartFile[] images) {
+        List<String> changes = new ArrayList<>();
+        ListingActivityService.addIfProvidedAndChanged(changes, "title", listing.getTitle(), dto.getTitle());
+        ListingActivityService.addIfProvidedAndChanged(changes, "price", listing.getTotalPrice(), dto.getTotalPrice());
+        ListingActivityService.addIfProvidedAndChanged(changes, "project name", listing.getProjectName(), dto.getProjectName());
+        ListingActivityService.addIfProvidedAndChanged(changes, "builder", listing.getBuilderName(), dto.getBuilderName());
+        ListingActivityService.addIfProvidedAndChanged(changes, "locality", listing.getLocalityName(), dto.getLocality());
+        ListingActivityService.addIfProvidedAndChanged(changes, "bedrooms", listing.getBedrooms(), dto.getBedrooms());
+        ListingActivityService.addIfProvidedAndChanged(changes, "listing type", listing.getListingType(), dto.getListingType());
+        ListingActivityService.addIfProvidedAndChanged(changes, "transaction", listing.getTransaction(), dto.getTransaction());
+        ListingActivityService.addIfProvidedAndChanged(changes, "description", listing.getDescription(), dto.getDescription());
+        ListingActivityService.addIfProvidedAndChanged(changes, "carpet area", listing.getCarpetArea(), dto.getCarpetArea());
+        ListingActivityService.addIfProvidedAndChanged(changes, "furnishing", listing.getFurnished(), dto.getFurnishingLevel());
+        if (dto.getCityId() != null
+                && (listing.getCity() == null || !dto.getCityId().equals(listing.getCity().getId()))) {
+            changes.add("city");
+        }
+        if (images != null && images.length > 0) {
+            changes.add("images");
+        }
+        if ((dto.getAmenityIds() != null && !dto.getAmenityIds().isEmpty())
+                || (dto.getSocietyFeatures() != null && !dto.getSocietyFeatures().isEmpty())) {
+            changes.add("amenities");
+        }
+        if (dto.getNearbyBenefits() != null) {
+            changes.add("nearby benefits");
+        }
+        return changes;
     }
 
     /**

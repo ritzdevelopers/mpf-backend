@@ -1,6 +1,7 @@
 package com.mypropertyfact.estate.dtos;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record LiveListingRowDto(
         String source,
@@ -22,6 +23,10 @@ public record LiveListingRowDto(
         LocalDateTime createdAt,
         LocalDateTime wentLiveAt,
         String publicPath,
-        String adminPath
+        String adminPath,
+        String lastEditedBy,
+        LocalDateTime lastEditedAt,
+        String lastEditSummary,
+        List<LiveListingEditDto> edits
 ) {
 }

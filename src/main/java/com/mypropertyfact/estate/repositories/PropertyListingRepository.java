@@ -142,6 +142,7 @@ public interface PropertyListingRepository extends JpaRepository<PropertyListing
             SELECT DISTINCT pl FROM PropertyListing pl
             LEFT JOIN FETCH pl.user
             LEFT JOIN FETCH pl.city
+            LEFT JOIN FETCH pl.approvedBy
             WHERE pl.approvalStatus = :status
             """)
     List<PropertyListing> findByApprovalStatusWithUserAndCity(

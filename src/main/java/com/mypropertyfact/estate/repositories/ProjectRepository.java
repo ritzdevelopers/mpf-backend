@@ -353,6 +353,7 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             LEFT JOIN FETCH p.builder
             LEFT JOIN FETCH p.projectTypes
             LEFT JOIN FETCH p.projectStatus
+            LEFT JOIN FETCH p.createdBy
             WHERE p.status = true
             """)
     List<Project> findLiveWithDetails();

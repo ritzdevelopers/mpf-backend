@@ -299,13 +299,14 @@ public class ProjectService {
                     project.setProjectThumbnailAltTag(fileUtils.generateImageAltTag(projectThumbnail));
                 }
                 // save data to database
+                List<String> changes = projectChangeSummary(project, addUpdateProjectDto, projectLogo, locationMap, projectThumbnail);
                 mapDtoToEntity(project, addUpdateProjectDto);
                 projectRepository.save(project);
                 listingActivityService.record(
                         ListingActivityService.SOURCE_PROJECT,
                         (long) project.getId(),
                         ListingActivityService.ACTION_UPDATED,
-                        project.getProjectName());
+                        ListingActivityService.describeChanges(changes, project.getProjectName()));
                 if (wasPublished != project.isStatus()) {
                     listingActivityService.record(
                             ListingActivityService.SOURCE_PROJECT,
@@ -438,6 +439,47 @@ public class ProjectService {
         project.setLocationDesc(dto.getLocationDescription());
         project.setFloorPlanDesc(dto.getFloorPlanDescription());
         project.setStatus(dto.isStatus());
+    }
+
+    private static List<String> projectChangeSummary(
+            Project project,
+            AddUpdateProjectDto dto,
+            MultipartFile projectLogo,
+            MultipartFile locationMap,
+            MultipartFile projectThumbnail) {
+        List<String> changes = new ArrayList<>();
+        ListingActivityService.addIfChanged(changes, "name", project.getProjectName(), dto.getProjectName());
+        ListingActivityService.addIfChanged(changes, "price", project.getProjectPrice(), dto.getProjectPrice());
+        ListingActivityService.addIfChanged(changes, "locality", project.getProjectLocality(), dto.getProjectLocality());
+        ListingActivityService.addIfChanged(changes, "configuration", project.getProjectConfiguration(), dto.getProjectConfiguration());
+        ListingActivityService.addIfChanged(changes, "slug", project.getSlugURL(), dto.getSlugURL());
+        int cityId = project.getCity() != null && project.getCity().getId() != null
+                ? project.getCity().getId()
+                : 0;
+        if (dto.getCityId() != cityId) {
+            changes.add("city");
+        }
+        int builderId = project.getBuilder() != null ? project.getBuilder().getId() : 0;
+        if (dto.getBuilderId() > 0 && dto.getBuilderId() != builderId) {
+            changes.add("builder");
+        }
+        int typeId = project.getProjectTypes() != null ? project.getProjectTypes().getId() : 0;
+        if (dto.getPropertyTypeId() > 0 && dto.getPropertyTypeId() != typeId) {
+            changes.add("property type");
+        }
+        if (project.isStatus() != dto.isStatus()) {
+            changes.add("publish status");
+        }
+        if (projectLogo != null && !projectLogo.isEmpty()) {
+            changes.add("logo");
+        }
+        if (locationMap != null && !locationMap.isEmpty()) {
+            changes.add("location map");
+        }
+        if (projectThumbnail != null && !projectThumbnail.isEmpty()) {
+            changes.add("thumbnail");
+        }
+        return changes;
     }
 
     public Set<String> getAllFloorTypes() {

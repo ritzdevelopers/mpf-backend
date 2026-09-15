@@ -10,6 +10,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -63,6 +65,50 @@ public class ListingActivityService {
         } catch (Exception e) {
             log.warn("Could not record listing activity {} {} {}: {}", source, entityId, action, e.getMessage());
         }
+    }
+
+    public static void addIfChanged(List<String> changes, String label, Object before, Object after) {
+        if (changes == null || label == null || label.isBlank()) {
+            return;
+        }
+        if (changed(before, after)) {
+            changes.add(label);
+        }
+    }
+
+    public static void addIfProvidedAndChanged(List<String> changes, String label, Object before, Object after) {
+        if (after == null) {
+            return;
+        }
+        addIfChanged(changes, label, before, after);
+    }
+
+    public static String describeChanges(List<String> changes, String fallback) {
+        if (changes == null || changes.isEmpty()) {
+            return firstNonBlank(fallback, "Updated listing");
+        }
+        if (changes.size() == 1) {
+            return "Changed " + changes.get(0);
+        }
+        if (changes.size() == 2) {
+            return "Changed " + changes.get(0) + " and " + changes.get(1);
+        }
+        int keep = Math.min(changes.size(), 5);
+        String joined = String.join(", ", changes.subList(0, keep - 1));
+        String last = changes.get(keep - 1);
+        String extra = changes.size() > keep ? " and more" : "";
+        return "Changed " + joined + ", and " + last + extra;
+    }
+
+    public static boolean changed(Object before, Object after) {
+        return !normalize(before).equalsIgnoreCase(normalize(after));
+    }
+
+    private static String normalize(Object value) {
+        if (value == null) {
+            return "";
+        }
+        return String.valueOf(value).trim();
     }
 
     private static String firstNonBlank(String... values) {
