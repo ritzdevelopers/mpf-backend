@@ -153,6 +153,18 @@ public final class AdminApiTaskDescriber {
         if (path.contains("/api/v1/admin/super/audit-logs")) {
             return "View admin audit logs";
         }
+        if (path.contains("/api/v1/admin/super/live-listings")) {
+            return "View live website and portal listings";
+        }
+        if (path.contains("/api/v1/admin/super/project-listings")) {
+            if (HttpMethod.DELETE.matches(method)) {
+                return "Delete project listing from activity dashboard";
+            }
+            return "View project listing activity dashboard";
+        }
+        if (path.contains("/api/v1/admin/super/portal-listing-stats")) {
+            return "View portal listing counts";
+        }
         if (path.contains("/api/v1/admin/management/activities")) {
             return "View management activity log";
         }

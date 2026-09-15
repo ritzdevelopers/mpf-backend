@@ -30,6 +30,8 @@ public class UserPropertyService {
     private final ProjectTypeRepository projectTypeRepository;
 
     private final AmenityRepository amenityRepository;
+
+    private final ListingActivityService listingActivityService;
     
     @Value("${upload_dir}")
     private String uploadDir;
@@ -189,9 +191,18 @@ public class UserPropertyService {
         // Set timestamps
         project.setCreatedAt(LocalDateTime.now());
         project.setUpdatedAt(LocalDateTime.now());
-        
+        if (user != null) {
+            project.setCreatedBy(user);
+        }
+
         // Save project
         Project savedProject = projectRepository.save(project);
+        listingActivityService.record(
+                ListingActivityService.SOURCE_PROJECT,
+                (long) savedProject.getId(),
+                ListingActivityService.ACTION_CREATED,
+                user,
+                savedProject.getProjectName());
         log.info("Property saved successfully with ID: {}", savedProject.getId());
         
         return savedProject;

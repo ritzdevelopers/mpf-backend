@@ -22,7 +22,15 @@ import java.util.Set;
  * between admin-managed projects and user-submitted listings.
  */
 @Entity
-@Table(name = "property_listings")
+@Table(
+    name = "property_listings",
+    indexes = {
+        @Index(name = "idx_pl_created_at", columnList = "created_at"),
+        @Index(name = "idx_pl_updated_at", columnList = "updated_at"),
+        @Index(name = "idx_pl_user_id", columnList = "user_id"),
+        @Index(name = "idx_pl_approval_status", columnList = "approval_status")
+    }
+)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -31,9 +31,16 @@ import java.util.Set;
 @Entity
 @Getter
 @Setter
-@Table(name = "projects")
+@Table(
+        name = "projects",
+        indexes = {
+                @Index(name = "idx_projects_created_at", columnList = "created_at"),
+                @Index(name = "idx_projects_updated_at", columnList = "updated_at"),
+                @Index(name = "idx_projects_created_by", columnList = "created_by_user_id"),
+                @Index(name = "idx_projects_status", columnList = "status")
+        })
 @ToString(exclude = {
-        "city", "builder", "projectTypes", "projectStatus",
+        "city", "builder", "projectTypes", "projectStatus", "createdBy",
         "projectBanners", "floorPlans", "amenities", "projectsAbouts",
         "projectWalkthroughs", "locationBenefits", "projectGalleries", "projectFaqs"
 })
@@ -77,6 +84,12 @@ public class Project {
     private String locationDesc;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    /** Admin / user who first created this website project. Null for legacy rows. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_user_id")
+    @JsonIgnore
+    private User createdBy;
 
     @PrePersist
     protected void onCreate() {

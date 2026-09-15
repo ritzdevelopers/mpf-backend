@@ -57,6 +57,8 @@ public class PropertyListingService {
 
     private final AdminDashboardActivityService adminDashboardActivityService;
 
+    private final ListingActivityService listingActivityService;
+
     @Value("${upload_dir:uploads/}")
     private String uploadDir;
 
@@ -296,6 +298,12 @@ public class PropertyListingService {
             }
 
             log.info("Property listing created successfully with ID: {}", savedListing.getId());
+            listingActivityService.record(
+                    ListingActivityService.SOURCE_PORTAL,
+                    savedListing.getId(),
+                    ListingActivityService.ACTION_CREATED,
+                    user,
+                    listingTitle(savedListing));
             return savedListing;
         } catch (Exception e) {
             log.error("Error creating property listing: {}", e.getMessage(), e);
@@ -453,6 +461,7 @@ public class PropertyListingService {
             listing = propertyListingRepository.findByIdAndUserId(id, user.getId())
                     .orElseThrow(() -> new RuntimeException("Property listing not found or unauthorized"));
         }
+        ProjectApprovalStatus previousStatus = listing.getApprovalStatus();
 
         // ========== UPDATE BASIC INFORMATION ==========
         if (dto.getListingType() != null)
@@ -718,7 +727,22 @@ public class PropertyListingService {
             savePropertyImages(listing, images);
         }
 
-        return propertyListingRepository.save(listing);
+        PropertyListing saved = propertyListingRepository.save(listing);
+        listingActivityService.record(
+                ListingActivityService.SOURCE_PORTAL,
+                saved.getId(),
+                ListingActivityService.ACTION_UPDATED,
+                user,
+                listingTitle(saved));
+        if (previousStatus != saved.getApprovalStatus()) {
+            listingActivityService.record(
+                    ListingActivityService.SOURCE_PORTAL,
+                    saved.getId(),
+                    ListingActivityService.ACTION_STATUS_CHANGED,
+                    user,
+                    previousStatus + " → " + saved.getApprovalStatus());
+        }
+        return saved;
     }
 
     /**
@@ -760,6 +784,12 @@ public class PropertyListingService {
         PropertyListing saved = propertyListingRepository.save(listing);
         recordPropertyReviewActivity(
                 saved, AdminDashboardActivityService.TASK_PROPERTY_APPROVED);
+        listingActivityService.record(
+                ListingActivityService.SOURCE_PORTAL,
+                saved.getId(),
+                ListingActivityService.ACTION_APPROVED,
+                admin,
+                listingTitle(saved));
         return saved;
     }
 
@@ -779,6 +809,12 @@ public class PropertyListingService {
         PropertyListing saved = propertyListingRepository.save(listing);
         recordPropertyReviewActivity(
                 saved, AdminDashboardActivityService.TASK_PROPERTY_REJECTED);
+        listingActivityService.record(
+                ListingActivityService.SOURCE_PORTAL,
+                saved.getId(),
+                ListingActivityService.ACTION_REJECTED,
+                admin,
+                reason);
         return saved;
     }
 
@@ -967,6 +1003,19 @@ public class PropertyListingService {
     /**
      * Generate title from property details
      */
+    private String listingTitle(PropertyListing listing) {
+        if (listing == null) {
+            return null;
+        }
+        if (listing.getTitle() != null && !listing.getTitle().isBlank()) {
+            return listing.getTitle().trim();
+        }
+        if (listing.getProjectName() != null && !listing.getProjectName().isBlank()) {
+            return listing.getProjectName().trim();
+        }
+        return "Property listing";
+    }
+
     private String generateTitle(PropertyListingRequestDto dto) {
         List<String> parts = new ArrayList<>();
         if (dto.getBedrooms() != null)

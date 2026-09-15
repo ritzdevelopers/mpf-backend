@@ -9,10 +9,18 @@ import com.mypropertyfact.estate.dtos.SiteTrafficSummaryResponse;
 import com.mypropertyfact.estate.dtos.SiteTrafficVisitPageResponse;
 import com.mypropertyfact.estate.dtos.SuperAdminNotificationsResponse;
 import com.mypropertyfact.estate.dtos.TrafficRevealRequest;
+import com.mypropertyfact.estate.dtos.LiveListingsResponse;
 import com.mypropertyfact.estate.dtos.PortalListingStatsResponse;
+import com.mypropertyfact.estate.dtos.ProjectListingDetailDto;
+import com.mypropertyfact.estate.dtos.ProjectListingFilterOptionsDto;
+import com.mypropertyfact.estate.dtos.ProjectListingPageResponse;
 import com.mypropertyfact.estate.dtos.WebsiteLoginPageResponse;
+import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.services.AdminAuditLogService;
+import com.mypropertyfact.estate.services.ListingActivityService;
+import com.mypropertyfact.estate.services.LiveListingsService;
 import com.mypropertyfact.estate.services.PortalListingStatsService;
+import com.mypropertyfact.estate.services.ProjectListingActivityService;
 import com.mypropertyfact.estate.services.IpTrackService;
 import com.mypropertyfact.estate.services.SiteTrafficService;
 import com.mypropertyfact.estate.services.SuperAdminNotificationService;
@@ -30,7 +38,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -54,6 +64,8 @@ public class SuperAdminTrackingController {
     private final SuperAdminNotificationService superAdminNotificationService;
     private final WebsiteLoginService websiteLoginService;
     private final PortalListingStatsService portalListingStatsService;
+    private final LiveListingsService liveListingsService;
+    private final ProjectListingActivityService projectListingActivityService;
 
     @Value("${http.secure}")
     private boolean httpSecure;
@@ -187,6 +199,70 @@ public class SuperAdminTrackingController {
     @GetMapping("/portal-listing-stats")
     public ResponseEntity<PortalListingStatsResponse> portalListingStats() {
         return ResponseEntity.ok(portalListingStatsService.build());
+    }
+
+    @GetMapping("/live-listings")
+    public ResponseEntity<LiveListingsResponse> liveListings() {
+        return ResponseEntity.ok(liveListingsService.build());
+    }
+
+    @GetMapping("/project-listings")
+    public ResponseEntity<ProjectListingPageResponse> projectListings(
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) String dateFrom,
+            @RequestParam(required = false) String dateTo,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String projectName,
+            @RequestParam(required = false) String userName,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String projectId,
+            @RequestParam(required = false) String listingType,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String developer,
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) String userRole,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(projectListingActivityService.search(
+                date,
+                dateFrom,
+                dateTo,
+                q,
+                projectName,
+                userName,
+                email,
+                projectId,
+                listingType,
+                status,
+                developer,
+                location,
+                userRole,
+                page,
+                size));
+    }
+
+    @GetMapping("/project-listings/filter-options")
+    public ResponseEntity<ProjectListingFilterOptionsDto> projectListingFilterOptions() {
+        return ResponseEntity.ok(projectListingActivityService.filterOptions());
+    }
+
+    @GetMapping("/project-listings/{source}/{id}")
+    public ResponseEntity<ProjectListingDetailDto> projectListingDetails(
+            @PathVariable String source,
+            @PathVariable Long id) {
+        return ResponseEntity.ok(projectListingActivityService.details(source, id));
+    }
+
+    @DeleteMapping("/project-listings/{source}/{id}")
+    public ResponseEntity<Map<String, Object>> deleteProjectListing(
+            @PathVariable String source,
+            @PathVariable Long id) {
+        User actor = ListingActivityService.currentUserOrNull();
+        if (actor == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "unauthorized"));
+        }
+        projectListingActivityService.delete(source, id, actor);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Listing deleted"));
     }
 
     @GetMapping("/notifications")

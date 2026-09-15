@@ -40,6 +40,7 @@ public class ProjectService {
     private final ProjectGalleryRepository projectGalleryRepository;
     private final LocationBenefitRepository locationBenefitRepository;
     private final ProjectFaqsRepository faqsRepository;
+    private final ListingActivityService listingActivityService;
 
     @Value("${upload_dir}")
     private String uploadDir; // D:/my-property-fact/public/
@@ -260,6 +261,7 @@ public class ProjectService {
             // Process images only if new files are provided
             if (dbProject.isPresent()) {
                 Project project = dbProject.get();
+                boolean wasPublished = project.isStatus();
                 if (bySlugURL.isPresent() && bySlugURL.get().getId() != (addUpdateProjectDto.getId())) {
                     throw new IllegalArgumentException("SlugURL already exists!");
                 }
@@ -299,6 +301,20 @@ public class ProjectService {
                 // save data to database
                 mapDtoToEntity(project, addUpdateProjectDto);
                 projectRepository.save(project);
+                listingActivityService.record(
+                        ListingActivityService.SOURCE_PROJECT,
+                        (long) project.getId(),
+                        ListingActivityService.ACTION_UPDATED,
+                        project.getProjectName());
+                if (wasPublished != project.isStatus()) {
+                    listingActivityService.record(
+                            ListingActivityService.SOURCE_PROJECT,
+                            (long) project.getId(),
+                            project.isStatus()
+                                    ? ListingActivityService.ACTION_PUBLISHED
+                                    : ListingActivityService.ACTION_UNPUBLISHED,
+                            project.isStatus() ? "Published" : "Unpublished");
+                }
                 response.setMessage(Constants.PROJECT_UPDATED);
                 response.setIsSuccess(1);
             } else {
@@ -334,7 +350,23 @@ public class ProjectService {
                     savedFiles.add(projectThumbnailImage);
                 }
                 mapDtoToEntity(newProject, addUpdateProjectDto);
+                User creator = ListingActivityService.currentUserOrNull();
+                if (creator != null && newProject.getCreatedBy() == null) {
+                    newProject.setCreatedBy(creator);
+                }
                 Project savedProject = projectRepository.save(newProject);
+                listingActivityService.record(
+                        ListingActivityService.SOURCE_PROJECT,
+                        (long) savedProject.getId(),
+                        ListingActivityService.ACTION_CREATED,
+                        savedProject.getProjectName());
+                if (savedProject.isStatus()) {
+                    listingActivityService.record(
+                            ListingActivityService.SOURCE_PROJECT,
+                            (long) savedProject.getId(),
+                            ListingActivityService.ACTION_PUBLISHED,
+                            "Published");
+                }
                 response.setMessage(Constants.PROJECT_SAVED);
                 response.setIsSuccess(1);
                 response.setProjectId(savedProject.getId());

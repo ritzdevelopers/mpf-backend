@@ -137,4 +137,51 @@ public interface PropertyListingRepository extends JpaRepository<PropertyListing
             GROUP BY pl.user.id, pl.approvalStatus
             """)
     List<Object[]> countGroupedByUserIdAndStatus(@Param("userIds") List<Integer> userIds);
+
+    @Query("""
+            SELECT DISTINCT pl FROM PropertyListing pl
+            LEFT JOIN FETCH pl.user
+            LEFT JOIN FETCH pl.city
+            WHERE pl.approvalStatus = :status
+            """)
+    List<PropertyListing> findByApprovalStatusWithUserAndCity(
+            @Param("status") ProjectApprovalStatus status);
+
+    @Query("""
+            SELECT DISTINCT pl FROM PropertyListing pl
+            LEFT JOIN FETCH pl.user
+            LEFT JOIN FETCH pl.city
+            LEFT JOIN FETCH pl.builder
+            LEFT JOIN FETCH pl.approvedBy
+            WHERE pl.createdAt >= :from AND pl.createdAt < :to
+            ORDER BY pl.createdAt DESC
+            """)
+    List<PropertyListing> findListedBetween(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
+    @Query("""
+            SELECT DISTINCT pl FROM PropertyListing pl
+            LEFT JOIN FETCH pl.user
+            LEFT JOIN FETCH pl.city
+            LEFT JOIN FETCH pl.builder
+            LEFT JOIN FETCH pl.approvedBy
+            WHERE pl.id = :id
+            """)
+    Optional<PropertyListing> findWithListingDetailsById(@Param("id") Long id);
+
+    @Query("""
+            SELECT DISTINCT pl.builderName FROM PropertyListing pl
+            WHERE pl.builderName IS NOT NULL AND pl.builderName <> ''
+            ORDER BY pl.builderName
+            """)
+    List<String> findDistinctBuilderNames();
+
+    @Query("""
+            SELECT DISTINCT c.name FROM PropertyListing pl
+            JOIN pl.city c
+            WHERE c.name IS NOT NULL AND c.name <> ''
+            ORDER BY c.name
+            """)
+    List<String> findDistinctCityNames();
 }

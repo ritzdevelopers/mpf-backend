@@ -57,6 +57,8 @@ public class ProjectExcelUploadService {
     @Autowired
     private ProjectWalkthroughRepository projectWalkthroughRepository;
     @Autowired
+    private ListingActivityService listingActivityService;
+    @Autowired
     private FloorPlanRepository floorPlanRepository;
     @Autowired
     private AmenityRepository amenityRepository;
@@ -209,7 +211,18 @@ public class ProjectExcelUploadService {
         }
 
         boolean isNew = project.getId() == 0;
+        if (isNew && project.getCreatedBy() == null) {
+            User creator = ListingActivityService.currentUserOrNull();
+            if (creator != null) {
+                project.setCreatedBy(creator);
+            }
+        }
         projectRepository.save(project);
+        listingActivityService.record(
+                ListingActivityService.SOURCE_PROJECT,
+                (long) project.getId(),
+                isNew ? ListingActivityService.ACTION_CREATED : ListingActivityService.ACTION_UPDATED,
+                project.getProjectName());
 
         Optional<ProjectWalkthrough> existingWalkthrough =
                 projectWalkthroughRepository.findFirstByProject_IdOrderByIdDesc(project.getId());

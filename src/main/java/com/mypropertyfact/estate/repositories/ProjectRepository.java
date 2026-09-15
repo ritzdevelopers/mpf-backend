@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -345,5 +346,56 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             ORDER BY p.projectName
             """)
     List<ProjectAmenityResponse> findProjectsWithAmenities();
+
+    @Query("""
+            SELECT DISTINCT p FROM Project p
+            LEFT JOIN FETCH p.city
+            LEFT JOIN FETCH p.builder
+            LEFT JOIN FETCH p.projectTypes
+            LEFT JOIN FETCH p.projectStatus
+            WHERE p.status = true
+            """)
+    List<Project> findLiveWithDetails();
+
+    @Query("""
+            SELECT DISTINCT p FROM Project p
+            LEFT JOIN FETCH p.city
+            LEFT JOIN FETCH p.builder
+            LEFT JOIN FETCH p.projectTypes
+            LEFT JOIN FETCH p.projectStatus
+            LEFT JOIN FETCH p.createdBy
+            WHERE p.createdAt >= :from AND p.createdAt < :to
+            ORDER BY p.createdAt DESC
+            """)
+    List<Project> findListedBetween(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
+    @Query("""
+            SELECT DISTINCT p FROM Project p
+            LEFT JOIN FETCH p.city
+            LEFT JOIN FETCH p.builder
+            LEFT JOIN FETCH p.projectTypes
+            LEFT JOIN FETCH p.projectStatus
+            LEFT JOIN FETCH p.createdBy
+            WHERE p.id = :id
+            """)
+    Optional<Project> findWithListingDetailsById(@Param("id") int id);
+
+    @Query("""
+            SELECT DISTINCT b.builderName FROM Project p
+            JOIN p.builder b
+            WHERE b.builderName IS NOT NULL AND b.builderName <> ''
+            ORDER BY b.builderName
+            """)
+    List<String> findDistinctBuilderNames();
+
+    @Query("""
+            SELECT DISTINCT c.name FROM Project p
+            JOIN p.city c
+            WHERE c.name IS NOT NULL AND c.name <> ''
+            ORDER BY c.name
+            """)
+    List<String> findDistinctCityNames();
 
 }
