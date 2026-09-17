@@ -6,8 +6,10 @@ import com.mypropertyfact.estate.dtos.PendingPermissionsCountResponse;
 import com.mypropertyfact.estate.dtos.PendingPermissionsResponse;
 import com.mypropertyfact.estate.dtos.SuperAdminCreateUserRequest;
 import com.mypropertyfact.estate.dtos.SuperAdminPasswordResetDecisionRequest;
+import com.mypropertyfact.estate.dtos.UserAdminLogsResponse;
 import com.mypropertyfact.estate.entities.User;
 import com.mypropertyfact.estate.services.AdminPasswordResetRequestService;
+import com.mypropertyfact.estate.services.UserAdminLogsService;
 import com.mypropertyfact.estate.services.UserService;
 import com.mypropertyfact.estate.services.UserRoleService;
 
@@ -36,6 +38,7 @@ public class UserController {
     private final UserRepository userRepository;
     private final UserRoleService userRoleService;
     private final AdminPasswordResetRequestService adminPasswordResetRequestService;
+    private final UserAdminLogsService userAdminLogsService;
 
     @GetMapping("/me")
     public ResponseEntity<User> authenticatedUser() {
@@ -216,6 +219,14 @@ public class UserController {
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", ex.getMessage()));
         }
+    }
+
+    @GetMapping("/{id}/logs")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<UserAdminLogsResponse> getUserLogs(@PathVariable Integer id) {
+        return userAdminLogsService.build(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{id}")

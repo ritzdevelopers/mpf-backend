@@ -9,11 +9,18 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Repository
 public interface WebsiteLoginEventRepository extends JpaRepository<WebsiteLoginEvent, Long> {
 
     Page<WebsiteLoginEvent> findByOrderByLoggedInAtDesc(Pageable pageable);
+
+    List<WebsiteLoginEvent> findTop50ByUserIdOrderByLoggedInAtDesc(Integer userId);
+
+    List<WebsiteLoginEvent> findTop50ByEmailIgnoreCaseOrderByLoggedInAtDesc(String email);
+
+    long countByUserId(Integer userId);
 
     long countByLoggedInAtAfter(LocalDateTime since);
 
