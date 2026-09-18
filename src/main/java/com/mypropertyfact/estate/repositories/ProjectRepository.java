@@ -91,10 +91,10 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
                 b.builderName,
                 c.id,
                 c.name,
-                s.stateName,
-                co.countryName,
-                co.id,
-                s.id,
+                COALESCE(s.stateName, pst.stateName),
+                COALESCE(co.countryName, pco.countryName),
+                COALESCE(co.id, pco.id),
+                COALESCE(s.id, pst.id),
                 pt.id,
                 pt.projectTypeName,
                 ps.id,
@@ -129,6 +129,8 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             LEFT JOIN p.city c
             LEFT JOIN c.state s
             LEFT JOIN s.country co
+            LEFT JOIN p.state pst
+            LEFT JOIN pst.country pco
             LEFT JOIN p.projectTypes pt
             LEFT JOIN p.projectStatus ps
             LEFT JOIN p.projectDesktopBanners pdb
@@ -174,12 +176,12 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
                 p.createdAt,
                 p.updatedAt,
                 w.walkthroughDesc,
-                s.stateName,
+                COALESCE(s.stateName, pst.stateName),
                 c.name,
-                co.countryName,
+                COALESCE(co.countryName, pco.countryName),
                 pt.projectTypeName,
-                co.id,
-                s.id,
+                COALESCE(co.id, pco.id),
+                COALESCE(s.id, pst.id),
                 c.id,
                 p.projectThumbnail,
                 pt.id,
@@ -191,6 +193,8 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             LEFT JOIN p.city c
             LEFT JOIN c.state s
             LEFT JOIN s.country co
+            LEFT JOIN p.state pst
+            LEFT JOIN pst.country pco
             LEFT JOIN p.projectTypes pt
             LEFT JOIN p.projectStatus ps
             WHERE p.slugURL = :slug
@@ -234,12 +238,12 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
                 p.createdAt,
                 p.updatedAt,
                 w.walkthroughDesc,
-                s.stateName,
+                COALESCE(s.stateName, pst.stateName),
                 c.name,
-                co.countryName,
+                COALESCE(co.countryName, pco.countryName),
                 pt.projectTypeName,
-                co.id,
-                s.id,
+                COALESCE(co.id, pco.id),
+                COALESCE(s.id, pst.id),
                 c.id,
                 p.projectThumbnail,
                 pt.id,
@@ -251,6 +255,8 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             LEFT JOIN p.city c
             LEFT JOIN c.state s
             LEFT JOIN s.country co
+            LEFT JOIN p.state pst
+            LEFT JOIN pst.country pco
             LEFT JOIN p.projectTypes pt
             LEFT JOIN p.projectStatus ps
             WHERE p.slugURL = :slug
@@ -293,12 +299,12 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
                 p.createdAt,
                 p.updatedAt,
                 w.walkthroughDesc,
-                s.stateName,
+                COALESCE(s.stateName, pst.stateName),
                 c.name,
-                co.countryName,
+                COALESCE(co.countryName, pco.countryName),
                 pt.projectTypeName,
-                co.id,
-                s.id,
+                COALESCE(co.id, pco.id),
+                COALESCE(s.id, pst.id),
                 c.id,
                 p.projectThumbnail,
                 pt.id,
@@ -310,6 +316,8 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             LEFT JOIN p.city c
             LEFT JOIN c.state s
             LEFT JOIN s.country co
+            LEFT JOIN p.state pst
+            LEFT JOIN pst.country pco
             LEFT JOIN p.projectTypes pt
             LEFT JOIN p.projectStatus ps
             WHERE p.id = :id
@@ -323,6 +331,7 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             SELECT p FROM Project p
             LEFT JOIN FETCH p.city c
             LEFT JOIN FETCH c.state
+            LEFT JOIN FETCH p.state
             WHERE p.id IN :ids
             """)
     List<Project> findAllWithCityStateByIdIn(@Param("ids") List<Integer> ids);
@@ -331,6 +340,7 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             SELECT p FROM Project p
             LEFT JOIN FETCH p.city c
             LEFT JOIN FETCH c.state
+            LEFT JOIN FETCH p.state
             WHERE p.slugURL IN :slugs
             """)
     List<Project> findAllWithCityStateBySlugIn(@Param("slugs") List<String> slugs);
