@@ -15,6 +15,7 @@ import java.util.Set;
         name = "Project.withAllRelations",
         attributeNodes = {
                 @NamedAttributeNode("city"),
+                @NamedAttributeNode("state"),
                 @NamedAttributeNode("builder"),
                 @NamedAttributeNode("projectTypes"),
                 @NamedAttributeNode("projectStatus"),
@@ -40,7 +41,7 @@ import java.util.Set;
                 @Index(name = "idx_projects_status", columnList = "status")
         })
 @ToString(exclude = {
-        "city", "builder", "projectTypes", "projectStatus", "createdBy",
+        "city", "state", "builder", "projectTypes", "projectStatus", "createdBy",
         "projectBanners", "floorPlans", "amenities", "projectsAbouts",
         "projectWalkthroughs", "locationBenefits", "projectGalleries", "projectFaqs"
 })
@@ -75,6 +76,11 @@ public class Project {
     @JoinColumn(name = "city_Id")
     @JsonIgnore
     private City city;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "state_id")
+    @JsonIgnore
+    private State state;
 
     @Lob
     private String amenityDesc;

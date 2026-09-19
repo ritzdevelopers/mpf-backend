@@ -8,7 +8,7 @@ public class AddUpdateProjectDto {
     private int id;
     private int builderId;
     private int stateId;
-    private int cityId;
+    private Integer cityId;
     private int countryId;
     private int propertyTypeId;
     private int projectStatusId;

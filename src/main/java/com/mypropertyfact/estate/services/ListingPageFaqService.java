@@ -2,10 +2,16 @@ package com.mypropertyfact.estate.services;
 
 import com.mypropertyfact.estate.dtos.ListingPageFaqBulkDto;
 import com.mypropertyfact.estate.dtos.ListingPageFaqDto;
+import com.mypropertyfact.estate.dtos.ListingPageFaqGroupDto;
+import com.mypropertyfact.estate.dtos.ListingPageFaqItemDto;
+import com.mypropertyfact.estate.dtos.ListingPageFaqPageResponse;
 import com.mypropertyfact.estate.entities.ListingPageFaq;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.repositories.ListingPageFaqRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -16,32 +22,72 @@ public class ListingPageFaqService {
 
     private final ListingPageFaqRepository listingPageFaqRepository;
 
-    public List<Map<String, Object>> getAllFaqsGrouped() {
-        List<ListingPageFaq> allFaqs = listingPageFaqRepository.findAllByOrderByPageSlugAscSortOrderAscIdAsc();
-        Map<String, Map<String, Object>> grouped = new LinkedHashMap<>();
+    public ListingPageFaqPageResponse getAllFaqsGrouped(int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+        Page<Object[]> summaries = listingPageFaqRepository.findPageFaqSummaries(pageable);
 
-        for (ListingPageFaq faq : allFaqs) {
-            String slug = faq.getPageSlug();
-            Map<String, Object> pageGroup = grouped.computeIfAbsent(slug, key -> {
-                Map<String, Object> obj = new HashMap<>();
-                obj.put("pageSlug", key);
-                obj.put("pageTitle", faq.getPageTitle() != null ? faq.getPageTitle() : formatSlugTitle(key));
-                obj.put("faqs", new ArrayList<Map<String, Object>>());
-                return obj;
-            });
-
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> faqList = (List<Map<String, Object>>) pageGroup.get("faqs");
-
-            Map<String, Object> faqItem = new HashMap<>();
-            faqItem.put("id", faq.getId());
-            faqItem.put("question", faq.getFaqQuestion());
-            faqItem.put("answer", faq.getFaqAnswer());
-            faqItem.put("sortOrder", faq.getSortOrder());
-            faqList.add(faqItem);
+        if (summaries.isEmpty()) {
+            return ListingPageFaqPageResponse.builder()
+                    .content(List.of())
+                    .totalElements(summaries.getTotalElements())
+                    .totalPages(summaries.getTotalPages())
+                    .number(summaries.getNumber())
+                    .size(summaries.getSize())
+                    .build();
         }
 
-        return new ArrayList<>(grouped.values());
+        List<String> pageSlugs = summaries.getContent().stream()
+                .map(row -> (String) row[0])
+                .toList();
+        List<ListingPageFaq> faqs = listingPageFaqRepository.findByPageSlugs(pageSlugs);
+        Map<String, List<ListingPageFaqItemDto>> faqsBySlug = new LinkedHashMap<>();
+        Map<String, String> pageTitlesBySlug = new LinkedHashMap<>();
+
+        for (ListingPageFaq faq : faqs) {
+            String slug = faq.getPageSlug();
+            pageTitlesBySlug.computeIfAbsent(slug, key ->
+                    faq.getPageTitle() != null && !faq.getPageTitle().isBlank()
+                            ? faq.getPageTitle()
+                            : formatSlugTitle(key));
+            faqsBySlug
+                    .computeIfAbsent(slug, key -> new ArrayList<>())
+                    .add(new ListingPageFaqItemDto(
+                            faq.getId(),
+                            faq.getFaqQuestion(),
+                            faq.getFaqAnswer(),
+                            faq.getSortOrder()
+                    ));
+        }
+
+        List<ListingPageFaqGroupDto> content = summaries.getContent().stream()
+                .map(row -> {
+                    String pageSlug = (String) row[0];
+                    String summaryTitle = row[1] != null ? row[1].toString() : null;
+                    long faqCount = row[2] instanceof Number number ? number.longValue() : 0L;
+                    String pageTitle = pageTitlesBySlug.getOrDefault(
+                            pageSlug,
+                            summaryTitle != null && !summaryTitle.isBlank()
+                                    ? summaryTitle
+                                    : formatSlugTitle(pageSlug)
+                    );
+                    return ListingPageFaqGroupDto.builder()
+                            .pageSlug(pageSlug)
+                            .pageTitle(pageTitle)
+                            .noOfFaqs((int) faqCount)
+                            .faqs(faqsBySlug.getOrDefault(pageSlug, List.of()))
+                            .build();
+                })
+                .toList();
+
+        return ListingPageFaqPageResponse.builder()
+                .content(content)
+                .totalElements(summaries.getTotalElements())
+                .totalPages(summaries.getTotalPages())
+                .number(summaries.getNumber())
+                .size(summaries.getSize())
+                .build();
     }
 
     public List<Map<String, Object>> getBySlug(String slug) {

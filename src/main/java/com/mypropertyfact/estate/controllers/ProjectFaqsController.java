@@ -1,6 +1,7 @@
 package com.mypropertyfact.estate.controllers;
 
 import com.mypropertyfact.estate.dtos.ProjectFaqDto;
+import com.mypropertyfact.estate.dtos.ProjectFaqPageResponse;
 import com.mypropertyfact.estate.entities.ProjectFaqs;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.ProjectFaqsService;
@@ -11,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/project-faqs")
@@ -21,8 +21,10 @@ public class ProjectFaqsController {
     private final ProjectFaqsService projectFaqsService;
 
     @GetMapping("/get-all")
-    public ResponseEntity<List<Map<String, Object>>> getAllFaq(){
-        return new ResponseEntity<>(this.projectFaqsService.getAllFaqs(), HttpStatus.OK);
+    public ResponseEntity<ProjectFaqPageResponse> getAllFaq(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return new ResponseEntity<>(this.projectFaqsService.getAllFaqs(page, size), HttpStatus.OK);
     }
     @PostMapping("/add-update")
     @PreAuthorize("@adminPermissionService.can(authentication, 'MANAGE_PROJECTS')")

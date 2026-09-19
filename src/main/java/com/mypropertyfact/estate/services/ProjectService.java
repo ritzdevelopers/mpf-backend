@@ -29,6 +29,7 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final AmenityRepository amenityRepository;
     private final CityRepository cityRepository;
+    private final StateRepository stateRepository;
     private final BuilderRepository builderRepository;
     private final ProjectTypeRepository projectTypeRepository;
     private final FileUtils fileUtils;
@@ -252,6 +253,12 @@ public class ProjectService {
             if (addUpdateProjectDto.getSlugURL() != null) {
                 bySlugURL = projectRepository.findBySlugURL(addUpdateProjectDto.getSlugURL());
             }
+            if (addUpdateProjectDto.getCountryId() <= 0) {
+                throw new IllegalArgumentException("Country is required");
+            }
+            if (addUpdateProjectDto.getStateId() <= 0) {
+                throw new IllegalArgumentException("State is required");
+            }
             // Generating path for storing image
             String projectDir = null;
             if (!addUpdateProjectDto.getSlugURL().isBlank()) {
@@ -400,13 +407,31 @@ public class ProjectService {
 
     // Map DTO fields to Project entity
     private void mapDtoToEntity(Project project, AddUpdateProjectDto dto) {
-        if (dto.getCityId() > 0) {
-            cityRepository.findById(dto.getCityId()).ifPresentOrElse(
-                    project::setCity,
-                    () -> project.setCity(null)
+        State selectedState = stateRepository.findById(dto.getStateId())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid state selected"));
+        if (selectedState.getCountry() == null
+                || selectedState.getCountry().getId() != dto.getCountryId()) {
+            throw new IllegalArgumentException("Selected state does not belong to the selected country");
+        }
+
+        Integer cityId = dto.getCityId();
+        if (cityId != null && cityId > 0) {
+            cityRepository.findById(cityId).ifPresentOrElse(
+                    city -> {
+                        if (city.getState() == null || city.getState().getId() != dto.getStateId()) {
+                            throw new IllegalArgumentException("Selected city does not belong to the selected state");
+                        }
+                        project.setCity(city);
+                        project.setState(city.getState());
+                    },
+                    () -> {
+                        project.setCity(null);
+                        project.setState(selectedState);
+                    }
             );
         } else {
             project.setCity(null);
+            project.setState(selectedState);
         }
         Optional<Builder> builderObj = Optional.empty();
         if (dto.getBuilderId() > 0) {
@@ -453,11 +478,14 @@ public class ProjectService {
         ListingActivityService.addIfChanged(changes, "locality", project.getProjectLocality(), dto.getProjectLocality());
         ListingActivityService.addIfChanged(changes, "configuration", project.getProjectConfiguration(), dto.getProjectConfiguration());
         ListingActivityService.addIfChanged(changes, "slug", project.getSlugURL(), dto.getSlugURL());
-        int cityId = project.getCity() != null && project.getCity().getId() != null
-                ? project.getCity().getId()
-                : 0;
-        if (dto.getCityId() != cityId) {
+        Integer existingCityId = project.getCity() != null ? project.getCity().getId() : null;
+        Integer dtoCityId = dto.getCityId() != null && dto.getCityId() > 0 ? dto.getCityId() : null;
+        if (!Objects.equals(existingCityId, dtoCityId)) {
             changes.add("city");
+        }
+        int existingStateId = project.getState() != null ? project.getState().getId() : 0;
+        if (dto.getStateId() > 0 && dto.getStateId() != existingStateId) {
+            changes.add("state");
         }
         int builderId = project.getBuilder() != null ? project.getBuilder().getId() : 0;
         if (dto.getBuilderId() > 0 && dto.getBuilderId() != builderId) {

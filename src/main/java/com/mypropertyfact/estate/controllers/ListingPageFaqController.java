@@ -2,6 +2,7 @@ package com.mypropertyfact.estate.controllers;
 
 import com.mypropertyfact.estate.dtos.ListingPageFaqBulkDto;
 import com.mypropertyfact.estate.dtos.ListingPageFaqDto;
+import com.mypropertyfact.estate.dtos.ListingPageFaqPageResponse;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.ListingPageFaqService;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +22,10 @@ public class ListingPageFaqController {
     private final ListingPageFaqService listingPageFaqService;
 
     @GetMapping("/get-all")
-    public ResponseEntity<List<Map<String, Object>>> getAllFaqs() {
-        return new ResponseEntity<>(listingPageFaqService.getAllFaqsGrouped(), HttpStatus.OK);
+    public ResponseEntity<ListingPageFaqPageResponse> getAllFaqs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return new ResponseEntity<>(listingPageFaqService.getAllFaqsGrouped(page, size), HttpStatus.OK);
     }
 
     @GetMapping("/get/{slug}")
