@@ -3,7 +3,6 @@ package com.mypropertyfact.estate.services;
 import com.mypropertyfact.estate.dtos.ListingPageFaqBulkDto;
 import com.mypropertyfact.estate.dtos.ListingPageFaqDto;
 import com.mypropertyfact.estate.dtos.ListingPageFaqGroupDto;
-import com.mypropertyfact.estate.dtos.ListingPageFaqItemDto;
 import com.mypropertyfact.estate.dtos.ListingPageFaqPageResponse;
 import com.mypropertyfact.estate.entities.ListingPageFaq;
 import com.mypropertyfact.estate.models.Response;
@@ -28,55 +27,19 @@ public class ListingPageFaqService {
         Pageable pageable = PageRequest.of(safePage, safeSize);
         Page<Object[]> summaries = listingPageFaqRepository.findPageFaqSummaries(pageable);
 
-        if (summaries.isEmpty()) {
-            return ListingPageFaqPageResponse.builder()
-                    .content(List.of())
-                    .totalElements(summaries.getTotalElements())
-                    .totalPages(summaries.getTotalPages())
-                    .number(summaries.getNumber())
-                    .size(summaries.getSize())
-                    .build();
-        }
-
-        List<String> pageSlugs = summaries.getContent().stream()
-                .map(row -> (String) row[0])
-                .toList();
-        List<ListingPageFaq> faqs = listingPageFaqRepository.findByPageSlugs(pageSlugs);
-        Map<String, List<ListingPageFaqItemDto>> faqsBySlug = new LinkedHashMap<>();
-        Map<String, String> pageTitlesBySlug = new LinkedHashMap<>();
-
-        for (ListingPageFaq faq : faqs) {
-            String slug = faq.getPageSlug();
-            pageTitlesBySlug.computeIfAbsent(slug, key ->
-                    faq.getPageTitle() != null && !faq.getPageTitle().isBlank()
-                            ? faq.getPageTitle()
-                            : formatSlugTitle(key));
-            faqsBySlug
-                    .computeIfAbsent(slug, key -> new ArrayList<>())
-                    .add(new ListingPageFaqItemDto(
-                            faq.getId(),
-                            faq.getFaqQuestion(),
-                            faq.getFaqAnswer(),
-                            faq.getSortOrder()
-                    ));
-        }
-
         List<ListingPageFaqGroupDto> content = summaries.getContent().stream()
                 .map(row -> {
                     String pageSlug = (String) row[0];
                     String summaryTitle = row[1] != null ? row[1].toString() : null;
                     long faqCount = row[2] instanceof Number number ? number.longValue() : 0L;
-                    String pageTitle = pageTitlesBySlug.getOrDefault(
-                            pageSlug,
-                            summaryTitle != null && !summaryTitle.isBlank()
-                                    ? summaryTitle
-                                    : formatSlugTitle(pageSlug)
-                    );
+                    String pageTitle = summaryTitle != null && !summaryTitle.isBlank()
+                            ? summaryTitle
+                            : formatSlugTitle(pageSlug);
                     return ListingPageFaqGroupDto.builder()
                             .pageSlug(pageSlug)
                             .pageTitle(pageTitle)
                             .noOfFaqs((int) faqCount)
-                            .faqs(faqsBySlug.getOrDefault(pageSlug, List.of()))
+                            .faqs(List.of())
                             .build();
                 })
                 .toList();

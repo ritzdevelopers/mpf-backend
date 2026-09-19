@@ -1,6 +1,8 @@
 package com.mypropertyfact.estate.services;
 
 import com.mypropertyfact.estate.dtos.ListingPageContentDto;
+import com.mypropertyfact.estate.dtos.ListingPageContentPageResponse;
+import com.mypropertyfact.estate.dtos.ListingPageContentSummaryDto;
 import com.mypropertyfact.estate.entities.ListingPageContent;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.repositories.ListingPageContentRepository;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -19,11 +22,28 @@ public class ListingPageContentService {
 
     private final ListingPageContentRepository listingPageContentRepository;
 
-    public List<Map<String, Object>> getAllContents() {
-        return listingPageContentRepository.findAllByOrderByPageSlugAsc()
+    public ListingPageContentPageResponse getAllContents(int page, int size, String category, String q) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        String query = q == null || q.isBlank() ? "" : q.trim();
+
+        List<ListingPageContentSummaryDto> filtered = listingPageContentRepository.findAllSummaries(query)
                 .stream()
-                .map(this::toMap)
+                .map(this::toSummary)
+                .filter(row -> matchesCategory(row.getPageSlug(), category))
                 .toList();
+
+        int from = Math.min(safePage * safeSize, filtered.size());
+        int to = Math.min(from + safeSize, filtered.size());
+        int totalPages = safeSize == 0 ? 0 : (int) Math.ceil(filtered.size() / (double) safeSize);
+
+        return ListingPageContentPageResponse.builder()
+                .content(filtered.subList(from, to))
+                .totalElements(filtered.size())
+                .totalPages(totalPages)
+                .number(safePage)
+                .size(safeSize)
+                .build();
     }
 
     public Map<String, Object> getBySlug(String slug) {
@@ -32,6 +52,12 @@ public class ListingPageContentService {
         }
         return listingPageContentRepository
                 .findByPageSlugAndIsActiveTrue(slug.trim().toLowerCase())
+                .map(this::toMap)
+                .orElse(Map.of());
+    }
+
+    public Map<String, Object> getById(int id) {
+        return listingPageContentRepository.findById(id)
                 .map(this::toMap)
                 .orElse(Map.of());
     }
@@ -103,6 +129,60 @@ public class ListingPageContentService {
             response.setMessage(e.getMessage());
         }
         return response;
+    }
+
+    private ListingPageContentSummaryDto toSummary(Object[] row) {
+        String pageSlug = row[1] != null ? row[1].toString() : "";
+        String pageTitle = row[2] != null && !row[2].toString().isBlank()
+                ? row[2].toString()
+                : formatSlugTitle(pageSlug);
+        return ListingPageContentSummaryDto.builder()
+                .id(asInt(row[0]))
+                .pageSlug(pageSlug)
+                .pageTitle(pageTitle)
+                .heading(row[3] != null ? row[3].toString() : null)
+                .metaTitle(row[4] != null ? row[4].toString() : null)
+                .isActive(asBoolean(row[5]))
+                .hasContent(asBoolean(row[6]))
+                .build();
+    }
+
+    private boolean matchesCategory(String slug, String category) {
+        if (category == null || category.isBlank() || "all".equalsIgnoreCase(category)) {
+            return true;
+        }
+        return resolveCategory(slug).equalsIgnoreCase(category.trim());
+    }
+
+    private String resolveCategory(String slug) {
+        String value = slug == null ? "" : slug.toLowerCase(Locale.ROOT);
+        if (value.equals("projects/commercial") || value.startsWith("commercial-property-in-")) {
+            return "commercial";
+        }
+        if (value.equals("projects/new-launches") || value.startsWith("new-projects-in-")) {
+            return "new-projects";
+        }
+        if (value.equals("projects/residential") || value.startsWith("apartments-in-")) {
+            return "apartments";
+        }
+        if (value.startsWith("flats-in-")) return "flats";
+        if (value.startsWith("offices-and-shop-in-")) return "offices";
+        if (value.matches("^\\d+-bhk-.*")) return "bhk";
+        if (value.matches("^(shops|office|kiosk|food-court|restaurant|showroom|sco-plots)-in-.*")) {
+            return "config";
+        }
+        return "city";
+    }
+
+    private int asInt(Object value) {
+        if (value instanceof Number number) return number.intValue();
+        return 0;
+    }
+
+    private boolean asBoolean(Object value) {
+        if (value instanceof Boolean bool) return bool;
+        if (value instanceof Number number) return number.intValue() != 0;
+        return false;
     }
 
     private Map<String, Object> toMap(ListingPageContent row) {

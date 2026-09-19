@@ -28,6 +28,11 @@ public class ListingPageFaqController {
         return new ResponseEntity<>(listingPageFaqService.getAllFaqsGrouped(page, size), HttpStatus.OK);
     }
 
+    @GetMapping("/get-by-slug")
+    public ResponseEntity<List<Map<String, Object>>> getBySlugParam(@RequestParam("slug") String slug) {
+        return new ResponseEntity<>(listingPageFaqService.getBySlug(slug), HttpStatus.OK);
+    }
+
     @GetMapping("/get/{slug}")
     public ResponseEntity<List<Map<String, Object>>> getBySlug(@PathVariable("slug") String slug) {
         return new ResponseEntity<>(listingPageFaqService.getBySlug(slug), HttpStatus.OK);
