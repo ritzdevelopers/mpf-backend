@@ -2,6 +2,7 @@ package com.mypropertyfact.estate.controllers;
 
 import com.mypropertyfact.estate.dtos.ListingPageFaqBulkDto;
 import com.mypropertyfact.estate.dtos.ListingPageFaqDto;
+import com.mypropertyfact.estate.dtos.ListingPageFaqGroupDto;
 import com.mypropertyfact.estate.dtos.ListingPageFaqPageResponse;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.ListingPageFaqService;
@@ -26,6 +27,11 @@ public class ListingPageFaqController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return new ResponseEntity<>(listingPageFaqService.getAllFaqsGrouped(page, size), HttpStatus.OK);
+    }
+
+    @GetMapping("/summaries")
+    public ResponseEntity<List<ListingPageFaqGroupDto>> getSummaries() {
+        return new ResponseEntity<>(listingPageFaqService.getAllSummaries(), HttpStatus.OK);
     }
 
     @GetMapping("/get-by-slug")

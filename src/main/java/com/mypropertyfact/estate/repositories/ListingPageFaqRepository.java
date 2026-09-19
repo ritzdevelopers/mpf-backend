@@ -32,6 +32,14 @@ public interface ListingPageFaqRepository extends JpaRepository<ListingPageFaq, 
     Page<Object[]> findPageFaqSummaries(Pageable pageable);
 
     @Query("""
+            SELECT f.pageSlug, MIN(f.pageTitle), COUNT(f)
+            FROM ListingPageFaq f
+            GROUP BY f.pageSlug
+            ORDER BY f.pageSlug ASC
+            """)
+    List<Object[]> findAllPageFaqSummaries();
+
+    @Query("""
             SELECT f FROM ListingPageFaq f
             WHERE f.pageSlug IN :pageSlugs
             ORDER BY f.pageSlug ASC, f.sortOrder ASC, f.id ASC

@@ -53,6 +53,25 @@ public class ListingPageFaqService {
                 .build();
     }
 
+    public List<ListingPageFaqGroupDto> getAllSummaries() {
+        return listingPageFaqRepository.findAllPageFaqSummaries().stream()
+                .map(row -> {
+                    String pageSlug = (String) row[0];
+                    String summaryTitle = row[1] != null ? row[1].toString() : null;
+                    long faqCount = row[2] instanceof Number number ? number.longValue() : 0L;
+                    String pageTitle = summaryTitle != null && !summaryTitle.isBlank()
+                            ? summaryTitle
+                            : formatSlugTitle(pageSlug);
+                    return ListingPageFaqGroupDto.builder()
+                            .pageSlug(pageSlug)
+                            .pageTitle(pageTitle)
+                            .noOfFaqs((int) faqCount)
+                            .faqs(List.of())
+                            .build();
+                })
+                .toList();
+    }
+
     public List<Map<String, Object>> getBySlug(String slug) {
         List<ListingPageFaq> faqs = listingPageFaqRepository.findByPageSlugAndIsActiveTrueOrderBySortOrderAscIdAsc(slug);
         List<Map<String, Object>> result = new ArrayList<>();

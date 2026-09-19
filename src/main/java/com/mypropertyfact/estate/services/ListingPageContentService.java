@@ -22,6 +22,12 @@ public class ListingPageContentService {
 
     private final ListingPageContentRepository listingPageContentRepository;
 
+    public List<ListingPageContentSummaryDto> getAllSummaries() {
+        return listingPageContentRepository.findAllSummaries("").stream()
+                .map(this::toSummary)
+                .toList();
+    }
+
     public ListingPageContentPageResponse getAllContents(int page, int size, String category, String q) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), 100);

@@ -2,6 +2,7 @@ package com.mypropertyfact.estate.controllers;
 
 import com.mypropertyfact.estate.dtos.ListingPageContentDto;
 import com.mypropertyfact.estate.dtos.ListingPageContentPageResponse;
+import com.mypropertyfact.estate.dtos.ListingPageContentSummaryDto;
 import com.mypropertyfact.estate.models.Response;
 import com.mypropertyfact.estate.services.ListingPageContentService;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -18,6 +20,11 @@ import java.util.Map;
 public class ListingPageContentController {
 
     private final ListingPageContentService listingPageContentService;
+
+    @GetMapping("/summaries")
+    public ResponseEntity<List<ListingPageContentSummaryDto>> getSummaries() {
+        return new ResponseEntity<>(listingPageContentService.getAllSummaries(), HttpStatus.OK);
+    }
 
     @GetMapping("/get-all")
     public ResponseEntity<ListingPageContentPageResponse> getAllContents(
